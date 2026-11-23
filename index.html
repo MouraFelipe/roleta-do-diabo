@@ -94,6 +94,9 @@ label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:
 .tag{display:inline-block;font-size:9px;background:#2a1a1f;border-radius:5px;padding:1px 5px;margin-left:4px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;vertical-align:middle}
 .win{font-family:Cinzel,Georgia,serif;font-size:22px;color:var(--gold2)}
 .heat{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#d8cbc6;background:#120b0d}
+.stepper{display:flex;align-items:center;gap:10px;margin:6px 0 12px}
+.stepper button{width:46px;height:42px;border-radius:10px;background:#0d0809;border:1px solid var(--line);font-size:22px;font-weight:800;color:var(--gold2)}
+.stepper b{flex:1;text-align:center;font-family:Cinzel,Georgia,serif;font-size:22px;color:var(--gold2);font-variant-numeric:tabular-nums}
 .heat span{position:relative;z-index:1}
 .heat b{color:var(--gold2);font-variant-numeric:tabular-nums}
 .heat i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#3a1a10,#7a2a10);opacity:.55;transition:width .5s linear}
@@ -132,7 +135,7 @@ const SIGIL = `<svg class="sigil" viewBox="0 0 100 100"><defs><linearGradient id
 const coin = n => `<span class="coin">${n}</span>`;
 /* ================== regras ================== */
 const COST = {peekPub:1, peekSec:3, hide:6, "s1":2, "s2":3, "s-1":4, "s-2":5};
-const DEF = {coins:5, income:1, heatMin:5};     // moedas iniciais · moedas no começo de cada vez · minutos até a arma esquentar
+const DEF = {coins:5, income:1, heatSec:120};   // moedas iniciais · moedas no começo de cada vez · segundos até a arma esquentar (o dono da sala muda)
 const BOTNAMES = ["Belzebu","Lilith","Mefisto","Azazel","Baal","Astaroth"];
 const DEVIL = ["O tambor gira... quem tem coragem?","Hehehe. A sorte é minha convidada.","Cada moeda compra um segredo.","Confie no seu instinto... ou não.","Alianças são lindas. Até a bala chegar.","O metal está esquentando."];
 const rnd = n => Math.random()*n|0;
@@ -147,7 +150,7 @@ function newGame(list, cfg){
   const order = list.map((_,i)=>i).sort(()=>Math.random()-.5);
   const G = {players:list.map(p=>({id:p.id, name:p.name, bot:!!p.bot, alive:true, coins:c.coins, know:{}})),
              cfg:c, seats:order, cyl:order.map((_,i)=>({id:i, b:false})), nextId:order.length,
-             turn:order[0], acted:false, pub:{}, start:now(), heatMs:c.heatMin*6e4, heated:false, load:1, log:[], over:false, winner:null, seq:0, fx:null};
+             turn:order[0], acted:false, pub:{}, start:now(), heatMs:c.heatSec*1e3, heated:false, load:1, log:[], over:false, winner:null, seq:0, fx:null};
   loadBullets(G);
   G.players[G.turn].coins += c.income;
   log(G, `O tambor foi carregado com ${bulletsFor(G.seats.length)} bala${bulletsFor(G.seats.length)>1?"s":""}. ${G.players[G.turn].name} começa.`);
@@ -237,9 +240,9 @@ function botAction(G, i){
 const app = document.getElementById("app");
 let MODE = null;          // "bots" | "host" | "guest"
 let G = null, V = null, ME = 0, lastSeq = -1, botTimer = null, tick = null, heatAt = 0, pickMode = null;
-let net = {peer:null, conns:{}, host:null, code:null, lobby:[], name:"", heatMin:DEF.heatMin};
-const PEER_OPTS = (()=>{ const q=new URLSearchParams(location.search); return q.get("peerhost")?{host:q.get("peerhost"), port:+q.get("peerport")||9000, path:"/", secure:false}:{}; })();
 const store = { get(k,d){ try{ return JSON.parse(localStorage.getItem("rd-"+k)) ?? d; }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("rd-"+k, JSON.stringify(v)); }catch(e){} } };
+let net = {peer:null, conns:{}, host:null, code:null, lobby:[], name:"", heatSec:store.get("heat",DEF.heatSec)};
+const PEER_OPTS = (()=>{ const q=new URLSearchParams(location.search); return q.get("peerhost")?{host:q.get("peerhost"), port:+q.get("peerport")||9000, path:"/", secure:false}:{}; })();
 function toast(t){ document.querySelectorAll(".toast").forEach(x=>x.remove()); const d=document.createElement("div"); d.className="toast"; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(), 3000); }
 let actx; function tone(fs, type="sine", len=.18){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)();
   fs.forEach((f,i)=>{ const o=actx.createOscillator(), g=actx.createGain(); o.type=type; o.frequency.value=f; const t=actx.currentTime+i*.08;
@@ -264,7 +267,7 @@ function home(){
       <li><i>${IC.secret}</i><span><b>Espiar secreto</b> · ${COST.peekSec} — só você vê. Conte para um aliado... ou minta.</span></li>
       <li><i>${IC.skull}</i><span><b>Esconder as balas</b> · ${COST.hide} — apaga o que os outros sabem; você continua sabendo. Combine com outra ação.</span></li>
       <li><i>${IC.f1}</i><span><b>Girar</b> 1 casa · ${COST.s1} &nbsp;|&nbsp; 2 casas · ${COST.s2} &nbsp;—&nbsp; <b>Voltar</b> 1 · ${COST["s-1"]} &nbsp;|&nbsp; 2 · ${COST["s-2"]}</span></li>
-      <li><i>${IC.skull}</i><span>A arma <b>esquenta em ${DEF.heatMin} minutos</b>. Depois disso, ao passar a vez, ela dispara na sua câmara. Com bala, você sai.</span></li>
+      <li><i>${IC.skull}</i><span>A arma <b>esquenta depois de um tempo</b> (o dono da sala escolhe; padrão ${mmss(DEF.heatSec*1e3)}). Depois disso, ao passar a vez, ela dispara na sua câmara. Com bala, você sai.</span></li>
       <li><i>${IC.crown}</i><span>O último vivo vence.</span></li></ul></div>
     <button class="btn ghost" id="bots" style="font-size:13px;padding:11px">${IC.cyl} Treino contra bots (offline)</button>`;
   const j=document.getElementById("joinHash"); if(j) j.onclick=()=>joinScreen(roomHash);
@@ -274,18 +277,20 @@ function home(){
 }
 function nameField(){ return `<label>Seu nome</label><input id="nm" maxlength="14" value="${esc(store.get("name",""))}" placeholder="Ex.: Felipe">`; }
 function readName(){ const v=(document.getElementById("nm").value||"").trim().slice(0,14); if(!v){ toast("Digite seu nome"); return null; } store.set("name",v); return v; }
-const heatSelect = v => `<label>A arma esquenta em</label><select id="hm">${[1,3,5,8,10].map(n=>`<option value="${n}" ${n===v?"selected":""}>${n} minuto${n>1?"s":""}</option>`).join("")}</select>`;
+const heatSelect = v => `<label>A arma esquenta em</label><div class="stepper"><button type="button" id="hm-">−</button><b id="hmv">${mmss(v*1e3)}</b><button type="button" id="hm+">+</button></div>`;
+function bindHeat(get, set){ const upd=d=>{ const v=Math.min(900, Math.max(30, get()+d)); set(v); store.set("heat", v); document.getElementById("hmv").textContent=mmss(v*1e3); };
+  document.getElementById("hm-").onclick=()=>upd(-30); document.getElementById("hm+").onclick=()=>upd(30); }
 function back(){ return `<button class="btn ghost" id="back">Voltar</button>`; }
 function bindBack(){ document.getElementById("back").onclick=()=>{ clean(); home(); }; }
 
 function botsSetup(){
   app.innerHTML = `<h2>Treino contra bots</h2><div class="card">${nameField()}
-    <label>Adversários</label><select id="n">${[2,3,4,5].map(n=>`<option ${n===3?"selected":""}>${n}</option>`).join("")}</select>${heatSelect(DEF.heatMin)}</div>
+    <label>Adversários</label><select id="n">${[2,3,4,5].map(n=>`<option ${n===3?"selected":""}>${n}</option>`).join("")}</select>${heatSelect(net.heatSec)}</div>
     <button class="btn" id="go">Começar</button>${back()}`;
-  bindBack();
+  bindBack(); bindHeat(()=>net.heatSec, v=>net.heatSec=v);
   document.getElementById("go").onclick=()=>{ const nm=readName(); if(!nm) return; const n=+document.getElementById("n").value;
     const list=[{id:"me", name:nm}].concat(BOTNAMES.slice(0,n).map((b,i)=>({id:"b"+i, name:b, bot:true})));
-    MODE="bots"; ME=0; G=newGame(list, {heatMin:+document.getElementById("hm").value}); lastSeq=-1; startTick(); refresh(); };
+    MODE="bots"; ME=0; G=newGame(list, {heatSec:net.heatSec}); lastSeq=-1; startTick(); refresh(); };
 }
 
 /* ================== online ================== */
@@ -323,22 +328,22 @@ function hostLeft(c){
   if (!G){ net.lobby=net.lobby.filter(p=>p.id!==c.pid); lobby(); sendLobby(); return; }
   const p=G.players.find(x=>x.id===c.pid); if(p && p.alive && !p.bot){ p.bot=true; log(G,`${p.name} caiu. Um bot joga no lugar até ele voltar.`); broadcast(); }
 }
-function sendLobby(){ Object.values(net.conns).forEach(c=>{ try{ c.send({k:"lobby", players:net.lobby, code:net.code, heatMin:net.heatMin}); }catch(e){} }); }
+function sendLobby(){ Object.values(net.conns).forEach(c=>{ try{ c.send({k:"lobby", players:net.lobby, code:net.code, heatSec:net.heatSec}); }catch(e){} }); }
 function broadcast(){ if(!G) return; Object.values(net.conns).forEach(c=>{ const i=G.players.findIndex(p=>p.id===c.pid); try{ c.send({k:"state", v:viewFor(G,i)}); }catch(e){} }); refresh(); }
 function lobby(){
   const host=MODE==="host", list=net.lobby, link=location.origin+location.pathname+location.search+"#sala-"+net.code;
   app.innerHTML = `<h2>Sala</h2><div class="card" style="text-align:center"><div class="muted">Código da sala</div><div class="code">${net.code}</div>
       <div class="muted" style="word-break:break-all">${esc(link)}</div><button class="btn ghost" id="copy" style="margin-top:10px">Copiar link</button></div>
     <div class="card"><b>Jogadores (${list.length}/6)</b><div style="margin-top:8px">${list.map((p,i)=>`<div style="padding:6px 0"><span style="display:inline-flex;width:18px;vertical-align:middle;color:var(--gold)">${i===0?IC.crown:""}</span> ${esc(p.name)}${p.bot?'<span class="tag">bot</span>':""}</div>`).join("")}</div>
-      ${host?`<button class="btn ghost" id="addbot" ${list.length>=6?"disabled":""}>+ Bot</button>${heatSelect(net.heatMin)}`:`<div class="muted" style="margin-top:6px">A arma esquenta em ${net.heatMin} min.</div>`}</div>
+      ${host?`<button class="btn ghost" id="addbot" ${list.length>=6?"disabled":""}>+ Bot</button>${heatSelect(net.heatSec)}`:`<div class="muted" style="margin-top:6px">A arma esquenta em ${mmss(net.heatSec*1e3)}.</div>`}</div>
     ${host?`<button class="btn" id="start" ${list.length<3?"disabled":""}>${list.length<3?`Faltam ${3-list.length} jogador(es)`:"Começar partida"}</button>`:`<div class="status">Esperando o dono da sala começar...</div>`}
     <button class="btn ghost" id="leave">Sair</button>`;
   document.getElementById("copy").onclick=()=>{ try{ navigator.clipboard.writeText(link).then(()=>toast("Link copiado"),()=>toast(link)); }catch(e){ toast(link); } };
   document.getElementById("leave").onclick=()=>{ clean(); home(); };
   if (host){
-    document.getElementById("hm").onchange=e=>{ net.heatMin=+e.target.value; sendLobby(); };
+    bindHeat(()=>net.heatSec, v=>{ net.heatSec=v; sendLobby(); });
     document.getElementById("addbot").onclick=()=>{ const used=net.lobby.map(p=>p.name); net.lobby.push({id:"bot"+now(), name:BOTNAMES.find(b=>!used.includes(b))||"Bot", bot:true}); lobby(); sendLobby(); };
-    document.getElementById("start").onclick=()=>{ G=newGame(net.lobby, {heatMin:net.heatMin}); ME=0; lastSeq=-1; startTick(); broadcast(); };
+    document.getElementById("start").onclick=()=>{ G=newGame(net.lobby, {heatSec:net.heatSec}); ME=0; lastSeq=-1; startTick(); broadcast(); };
   }
 }
 function joinScreen(code){
@@ -359,13 +364,13 @@ function connectGuest(nm, cd){
   peer.on("error",e=>{ toast(e.type==="peer-unavailable"?"Sala não encontrada":"Erro de conexão: "+e.type); if(MODE!=="guest") joinScreen(cd); });
 }
 function guestMsg(m){
-  if (m.k==="lobby"){ net.lobby=m.players; net.code=m.code; net.heatMin=m.heatMin; lobby(); }
+  if (m.k==="lobby"){ net.lobby=m.players; net.code=m.code; net.heatSec=m.heatSec; lobby(); }
   else if (m.k==="state"){ V=m.v; ME=V.me; heatAt=now()+V.heatLeft; if(!tick) startTick(); draw(); }
   else if (m.k==="priv"){ toast(m.msg.startsWith("Câmara")?"Só você vê · "+m.msg:m.msg); }
   else if (m.k==="err"){ toast(m.msg); clean(); home(); }
 }
 function stopAll(){ clearTimeout(botTimer); clearInterval(tick); tick=null; if(net.peer){ try{ net.peer.destroy(); }catch(e){} }
-  net={peer:null, conns:{}, host:null, code:null, lobby:[], name:"", heatMin:DEF.heatMin}; G=null; V=null; MODE=null; pickMode=null; }
+  net={peer:null, conns:{}, host:null, code:null, lobby:[], name:"", heatSec:store.get("heat",DEF.heatSec)}; G=null; V=null; MODE=null; pickMode=null; }
 
 /* ================== partida ================== */
 function send(a){

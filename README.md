@@ -10,7 +10,7 @@ Roleta russa de 3 a 6 jogadores, com moedas para espiar e manipular o tambor. Fe
 - Espiar secreto (3): só quem espiou vê. Pode contar para um aliado ou mentir.
 - Esconder as balas (6): apaga o que os outros sabem (público e secreto); quem escondeu continua sabendo. Pode combinar com outra ação na mesma vez.
 - Girar 1 casa (2) · girar 2 casas (3) · voltar 1 casa (4) · voltar 2 casas (5).
-- A arma esquenta depois de 5 minutos (o dono da sala escolhe 1, 3, 5, 8 ou 10). Depois disso, ao passar a vez, ela dispara na câmara de quem passou. Com bala, ele sai e a bala é gasta. Quando as balas acabam, o tambor é recarregado.
+- A arma esquenta depois de um tempo que o dono da sala ajusta de 30 s a 15 min (padrão 2 min). Depois disso, ao passar a vez, ela dispara na câmara de quem passou. Com bala, ele sai e a bala é gasta. Quando as balas acabam, o tambor é recarregado.
 - O último vivo vence. Alianças são combinadas fora do jogo.
 
 ## Técnico

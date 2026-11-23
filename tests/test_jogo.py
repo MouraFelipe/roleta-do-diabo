@@ -25,7 +25,7 @@ try:
     p = page(b); p.goto(URL); p.wait_for_selector("#host")
     r = p.evaluate("""()=>{ const L=n=>[...Array(n)].map((_,i)=>({id:'p'+i,name:'P'+i}));
       const o={}; o.b3=bulletsLeft(newGame(L(3))); o.b4=bulletsLeft(newGame(L(4))); o.b5=bulletsLeft(newGame(L(5))); o.b6=bulletsLeft(newGame(L(6)));
-      const G=newGame(L(3),{heatMin:5}); G.seats=[0,1,2]; G.cyl=[{id:0,b:false},{id:1,b:true},{id:2,b:false}]; G.turn=0; G.players.forEach(p=>p.coins=20); G.acted=false;
+      const G=newGame(L(3),{heatSec:300}); G.seats=[0,1,2]; G.cyl=[{id:0,b:false},{id:1,b:true},{id:2,b:false}]; G.turn=0; G.players.forEach(p=>p.coins=20); G.acted=false;
       o.passFirst=act(G,0,{t:'pass'}).err; o.notTurn=act(G,1,{t:'peekPub',s:0}).err;
       act(G,0,{t:'peekPub',s:1}); o.pub=G.pub[1]; o.c0=G.players[0].coins;
       const s=act(G,0,{t:'peekSec',s:2}); o.priv=s.priv; o.secret=G.players[0].know[2]==='V' && !G.players[1].know[2];
@@ -55,7 +55,7 @@ try:
         gs = []
         for n in ["Ana", "Bia", "Caio"]:
             g = page(b); g.goto(URL + q + "#sala-" + code); g.click("#joinHash"); g.fill("#nm", n); g.click("#go"); g.wait_for_selector("text=Esperando", timeout=15000); gs.append(g)
-        h.wait_for_selector("#start:not([disabled])"); h.select_option("#hm", "1"); gs[0].wait_for_selector("text=esquenta em 1 min"); h.screenshot(path="/tmp/rd_sala.png"); h.click("#start")
+        h.wait_for_selector("#start:not([disabled])"); h.click("#hm-"); h.click("#hm-"); gs[0].wait_for_selector("text=esquenta em 1:00"); h.screenshot(path="/tmp/rd_sala.png"); h.click("#start")
         for g in gs: g.wait_for_selector(".stage")
         allp = [h] + gs
         # um segredo só aparece para quem espiou
