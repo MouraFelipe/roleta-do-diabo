@@ -142,7 +142,7 @@ const coin = n => `<span class="coin">${n}</span>`;
 const COST = {peekPub:1, peekSec:3, hide:6, blind:7, accuse:4, "s1":2, "s2":3, "s-1":4, "s-2":5};
 const DEF = {coins:5, income:1, heatSec:60, mode:"padrao", auctionSec:20, devil:true};   // o dono da sala muda o tempo e o modo
 const MODES = {
-  padrao:{name:"Padrão", desc:"Depois que a arma esquenta, ela dispara em quem passa a vez."},
+  padrao:{name:"Padrão", desc:"Depois que a arma esquenta, no fim de cada volta ela dispara uma vez em um jogador sorteado."},
   volta:{name:"Volta completa", desc:"Ninguém leva tiro antes. Quando a arma esquenta, ela passa por cada um, em ordem, até a última bala."},
   traidor:{name:"Traidor oculto", desc:"Um jogador secreto serve ao Diabo e vê as balas. Ele vence se sobreviver sem ser descoberto."},
   leilao:{name:"Leilão da bala", desc:"A cada volta da mesa, lances escondidos: quem der mais vê onde estão todas as balas."}
@@ -183,7 +183,7 @@ function checkHeat(G){
     const s0=Math.max(0,seatOf(G,G.turn)); G.phase="finale"; G.auc=null;
     G.fin={order:G.seats.map((_,k)=>G.seats[mod(s0+k,G.seats.length)]), idx:0, step:"aim", at:now()+2200};
     log(G, "🔥 A arma esquentou! Agora ela vai passar por cada um, até a última bala.");
-  } else log(G, "🔥 A arma esquentou! Agora ela dispara em quem passar a vez.");
+  } else log(G, "🔥 A arma esquentou! No fim de cada volta ela dispara em um jogador sorteado.");
   return true;
 }
 function finish(G){
@@ -203,7 +203,7 @@ function act(G, i, a){
   checkHeat(G);
   if (a.t === "bid") return bid(G, i, a.v);
   if (a.t === "devil") return devilChoice(G, i, !!a.spin);
-  if (G.phase !== "play") return {err: G.phase==="auction" ? "Leilão em andamento" : G.phase==="devil" ? "O servo do Diabo está decidindo" : "A arma está disparando"};
+  if (G.phase !== "play") return {err: G.phase==="auction" ? "Leilão em andamento" : G.phase==="devil" ? "O servo do Diabo está decidindo" : "A arma vai disparar"};
   if (i !== G.turn) return {err:"Não é a sua vez"};
   if (a.t === "pass") return pass(G, i);
   const c = costOf(a), K = G.cyl.length;
@@ -245,24 +245,37 @@ function blindSpin(G){ const K=G.cyl.length; if (K>1){ const n=1+rnd(K-1); G.cyl
   G.pub={}; G.players.forEach(x=>x.know={}); G.cyl.forEach(c=>c.id=G.nextId++); G.fx={k:"blind"}; }
 function pass(G, i){
   const p=G.players[i], s=seatOf(G,i); G.seq++; G.fx=null;
-  let ns = s+1;
-  if (G.heated){                                           // padrão, traidor e leilão: dispara em quem passa
-    const ch=G.cyl[s];
-    if (ch.b){
-      p.alive=false; G.seats.splice(s,1); G.cyl.splice(s,1); ns=s;
-      log(G, `💥 BANG! A arma disparou em ${p.name}.`); G.fx={k:"bang"};
-      if (!bulletsLeft(G) || G.seats.length<=1){ finish(G); return {ok:1}; }
-    } else { G.pub[ch.id]="V"; log(G, `Clique... a câmara de ${p.name} estava vazia.`); G.fx={k:"click"}; }
-  } else log(G, `${p.name} passou a vez.`);
-  G.turn = G.seats[mod(ns, G.seats.length)]; G.acted=false; G.players[G.turn].coins += G.cfg.income; G.passes++;
-  const lap = G.passes % G.seats.length === 0;
-  if (lap && G.cfg.devil){
+  log(G, `${p.name} passou a vez.`);
+  G.turn = G.seats[mod(s+1, G.seats.length)]; G.acted=false; G.players[G.turn].coins += G.cfg.income; G.passes++;
+  if (G.passes % G.seats.length === 0){
+    if (G.heated){                                         // arma quente: um tiro num sorteado no fim da volta
+      const w=G.seats[rnd(G.seats.length)]; G.phase="shot"; G.sh={who:w, step:"aim", at:now()+600};
+      log(G, "🔥 Fim da volta: a arma vai disparar em um jogador sorteado...");
+    } else lapEnd(G);
+  }
+  return {ok:1};
+}
+/* depois do tiro (ou sem tiro): giro do Diabo e leilão */
+function lapEnd(G){
+  G.phase="play";
+  if (G.cfg.devil){
     if (G.mode==="traidor"){ if (G.players[G.traitor].alive){ G.phase="devil"; G.dv={who:G.traitor, start:now(), at:now()+15e3};
-        log(G, "😈 Fim da volta: o servo do Diabo decide em segredo se gira o tambor às cegas..."); } }
+        log(G, "😈 Fim da volta: o servo do Diabo decide em segredo se gira o tambor às cegas..."); return; } }
     else { blindSpin(G); log(G, "😈 Fim da volta: o Diabo girou o tambor às cegas. Ninguém sabe mais onde está a bala."); }
   }
-  if (lap && G.phase==="play") afterLap(G);
-  return {ok:1};
+  afterLap(G);
+}
+function stepShot(G){
+  const h=G.sh; if (!h || now()<h.at) return false;
+  const p=G.players[h.who]; G.seq++;
+  if (h.step==="aim"){ G.aim=h.who; G.fx={k:"aim"}; log(G, `A arma sorteou ${p.name}...`); h.step="fire"; h.at=now()+2200; return true; }
+  const s=seatOf(G,h.who), ch=G.cyl[s]; G.aim=-1; G.sh=null;
+  if (ch.b){
+    p.alive=false; G.seats.splice(s,1); G.cyl.splice(s,1); G.fx={k:"bang"}; log(G, `💥 BANG! A arma disparou em ${p.name}.`);
+    if (!bulletsLeft(G) || G.seats.length<=1){ finish(G); return true; }
+    if (G.turn===h.who){ G.turn=G.seats[mod(s, G.seats.length)]; G.players[G.turn].coins += G.cfg.income; }
+  } else { G.pub[ch.id]="V"; G.fx={k:"click"}; log(G, `Clique... a câmara de ${p.name} estava vazia.`); }
+  lapEnd(G); return true;
 }
 function afterLap(G){
   G.phase="play";
@@ -345,6 +358,7 @@ function hostTick(G){
     if (G.auc && now()>=G.auc.at){ resolveAuction(G); ch=true; }
   }
   if (G.phase==="finale" && stepFinale(G)) ch=true;
+  if (G.phase==="shot" && stepShot(G)) ch=true;
   if (G.phase==="devil" && G.dv){ const p=G.players[G.dv.who];
     if (now()>=G.dv.at){ devilChoice(G, -1, false); ch=true; }
     else if (p.bot && now()>=G.dv.start+1800){ devilChoice(G, G.dv.who, Math.random()<.5); ch=true; } }
@@ -383,7 +397,7 @@ function home(){
       <li><i>${IC.skull}</i><span><b>Esconder as balas</b> · ${COST.hide} — apaga o que os outros sabem; você continua sabendo. Combine com outra ação.</span></li>
       <li><i>${IC.f2}</i><span><b>Giro cego</b> · ${COST.blind} — gira uma quantidade sorteada que ninguém vê, nem você. Todos perdem o que sabiam.</span></li>
       <li><i>${IC.f1}</i><span><b>Girar</b> 1 casa · ${COST.s1} &nbsp;|&nbsp; 2 casas · ${COST.s2} &nbsp;—&nbsp; <b>Voltar</b> 1 · ${COST["s-1"]} &nbsp;|&nbsp; 2 · ${COST["s-2"]}</span></li>
-      <li><i>${IC.skull}</i><span>A arma <b>esquenta depois de um tempo</b> (o dono da sala escolhe). Depois disso ela começa a disparar.</span></li>
+      <li><i>${IC.skull}</i><span>A arma <b>esquenta depois de um tempo</b> (o dono da sala escolhe). Depois disso ela começa a disparar (como, depende do modo).</span></li>
       <li><i>${IC.crown}</i><span>A partida acaba quando <b>a última bala for disparada</b>. Quem estiver vivo vence; o mais rico é o campeão.</span></li>
       </ul><h2 style="font-size:16px;margin:14px 0 4px">Modos</h2><ul class="rules">${Object.values(MODES).map(m=>`<li><i>${IC.cyl}</i><span><b>${m.name}</b> — ${m.desc}</span></li>`).join("")}</ul></div>
     <button class="btn ghost" id="bots" style="font-size:13px;padding:11px">${IC.cyl} Treino contra bots (offline)</button>`;
@@ -518,7 +532,7 @@ function refresh(){                                    // quem roda o jogo: mont
 }
 /* tambor: lugares fixos em volta, câmaras giram */
 function cylinderSVG(v, k, rotFrom){
-  const C=170, K=v.seats.length, R=K<=4?64:K<=6?74:84, r=K<=4?27:K<=6?24:K<=8?20:17, big=K>6, step=360/K, turnSeat=v.seats.indexOf(v.phase==="finale"?v.aim:v.phase==="play"?v.turn:-1);
+  const C=170, K=v.seats.length, R=K<=4?64:K<=6?74:84, r=K<=4?27:K<=6?24:K<=8?20:17, big=K>6, step=360/K, turnSeat=v.seats.indexOf(v.phase==="finale"||v.phase==="shot"?v.aim:v.phase==="play"?v.turn:-1);
   const pos = (s,rad) => { const a=s*step*Math.PI/180-Math.PI/2; return [C+rad*Math.cos(a), C+rad*Math.sin(a)]; };
   const ch=v.cyl.map((id,s)=>{ const [x,y]=pos(s,R), st=k[id], sec=v.know[id]&&!v.pub[id];
     let inner=`<circle cx="${x}" cy="${y}" r="${r-4}" fill="url(#hole)"/>`;
@@ -561,12 +575,13 @@ function draw(){
   let status;
   if (v.over) status = R.traitorWin ? `<div class="win">😈 ${name(v.traitor)} venceu</div><span class="muted">Era o servo do Diabo e ninguém descobriu.</span>`
     : `<div class="win">${R.winners.length?`Sobreviveram: ${R.winners.map(name).join(", ")}`:"Ninguém sobreviveu"}</div>${R.champ>=0?`<span class="muted">Campeão da partida: <b>${name(R.champ)}</b> com ${v.players[R.champ].coins} moeda${v.players[R.champ].coins===1?"":"s"}</span>`:""}${v.mode==="traidor"?`<br><span class="muted">O servo do Diabo era ${name(v.traitor)}.</span>`:""}`;
+  else if (v.phase==="shot") status = v.aim>=0 ? `A arma sorteou <b>${name(v.aim)}</b>...` : `A arma vai disparar em um sorteado...`;
   else if (v.phase==="finale") status = v.aim>=0 ? `A arma aponta para <b>${name(v.aim)}</b>...` : `A arma esquentou. Ela vai passar por cada um...`;
   else if (v.phase==="auction") status = `🔨 <b>Leilão da bala</b>`;
   else if (v.phase==="devil") status = v.dv&&v.dv.mine ? `😈 <b>Fim da volta: você decide.</b>` : `😈 O servo do Diabo está decidindo se gira o tambor...`;
-  else status = mine?(v.acted?`Você já agiu. Pode fazer mais ações ou <b>passar a vez</b>${v.heated?" e encarar o disparo":""}.`:`<b>Sua vez.</b> Faça ações ou passe a vez.`)
+  else status = mine?(v.acted?`Você já agiu. Pode fazer mais ações ou <b>passar a vez</b>.`:`<b>Sua vez.</b> Faça ações ou passe a vez.`)
     : me&&!me.alive?`Você está fora. Assistindo...`:`Vez de <b>${esc(turnName)}</b>${v.players[v.turn].bot?" · pensando...":"..."}`;
-  const heatBar = v.over ? "" : v.heated ? `<div class="heat hot"><span>🔥 ${v.mode==="volta"?"A arma está quente: passando por cada um até a última bala":"A arma está quente: dispara em quem passar a vez"}</span></div>`
+  const heatBar = v.over ? "" : v.heated ? `<div class="heat hot"><span>🔥 ${v.mode==="volta"?"A arma está quente: passando por cada um até a última bala":"A arma está quente: no fim de cada volta ela dispara em um sorteado"}</span></div>`
     : `<div class="heat" id="heat"><span>A arma esquenta em <b>${mmss(heatLeft)}</b></span><i style="width:${100-heatLeft/v.heatMs*100}%"></i></div>`;
   let auction = "";
   if (v.phase==="auction" && v.auc){
@@ -589,11 +604,11 @@ function draw(){
     ${heatBar}
     ${v.isTraitor&&!v.over?`<div class="heat traitor"><span>😈 <b>Você é o servo do Diabo.</b> Você vê todas as balas. Sobreviva sem ser descoberto.${v.revealed?" (Você foi descoberto!)":""}</span></div>`:""}
     ${v.mode==="traidor"&&v.revealed&&!v.isTraitor&&!v.over?`<div class="heat"><span>⚖️ ${name(v.traitor)} foi descoberto como servo do Diabo.</span></div>`:""}
-    <div class="players">${v.players.map((p,i)=>`<div class="pl ${(v.phase==="finale"?i===v.aim:i===v.turn&&play)&&!v.over?"turn":""} ${p.alive?"":"dead"} ${p.bot?"bot":""}">${i===v.me?'<span class="me">VOCÊ</span>':""}<span class="av">${esc(p.name[0].toUpperCase())}</span><span class="tx"><b>${esc(p.name)}</b>${p.alive?coin(p.coins):'<span class="muted" style="font-size:11px">fora</span>'}</span></div>`).join("")}</div>
+    <div class="players">${v.players.map((p,i)=>`<div class="pl ${(v.phase==="finale"||v.phase==="shot"?i===v.aim:i===v.turn&&play)&&!v.over?"turn":""} ${p.alive?"":"dead"} ${p.bot?"bot":""}">${i===v.me?'<span class="me">VOCÊ</span>':""}<span class="av">${esc(p.name[0].toUpperCase())}</span><span class="tx"><b>${esc(p.name)}</b>${p.alive?coin(p.coins):'<span class="muted" style="font-size:11px">fora</span>'}</span></div>`).join("")}</div>
     <div class="stage" id="stage">${cylinderSVG(v, k, rotFrom)}</div>
     <div class="legend"><span><i style="background:radial-gradient(circle at 35% 35%,#fbe9b8,#cfa452,#6e4f1c)"></i>bala</span><span><i style="border:1.5px solid #6fae8a"></i>vazia</span><span><i style="border:1.5px dashed #e8cf92"></i>só você sabe</span></div>
-    <div class="status ${v.phase==="finale"?"finale":""}">${status}</div>
-    ${v.over?`<button class="btn" id="again">${MODE==="guest"?"Sair":"Jogar de novo"}</button><button class="btn ghost" id="exit">Menu</button>`:auction?auction:devilCard?devilCard:v.phase==="finale"||v.phase==="devil"?"":`
+    <div class="status ${v.phase==="finale"||v.phase==="shot"?"finale":""}">${status}</div>
+    ${v.over?`<button class="btn" id="again">${MODE==="guest"?"Sair":"Jogar de novo"}</button><button class="btn ghost" id="exit">Menu</button>`:auction?auction:devilCard?devilCard:v.phase==="finale"||v.phase==="devil"||v.phase==="shot"?"":`
     <div id="pick">${pickMode?`<div class="card"><b class="display" style="color:var(--gold2)">${pickTitle}</b><div class="pick">${pickList.join("")}</div><button class="btn ghost" id="cx">Cancelar</button></div>`:""}</div>
     <div class="acts">
       ${A("peekPub", IC.eye, "Espiar público", "Todos veem")}
@@ -606,7 +621,7 @@ function draw(){
       <div style="grid-column:1/-1">${A("blind", IC.f2, "Giro cego", "Gira sem ninguém ver quanto · todos perdem o que sabiam")}</div>
       ${v.mode==="traidor"&&!v.isTraitor?`<div style="grid-column:1/-1">${A("accuse", IC.skull, "Acusar o servo do Diabo", v.revealed?"Já foi descoberto":"Acertou: ele perde tudo · errou: perde a moeda", v.revealed)}</div>`:""}
     </div>
-    <button class="shoot" id="pass" ${mine?"":"disabled"}>${v.heated?"Passar e encarar o disparo":"Passar a vez"}</button>`}
+    <button class="shoot" id="pass" ${mine?"":"disabled"}>Passar a vez</button>`}
     <div class="card"><div class="quote">“${esc(DEVIL[v.log.length%DEVIL.length])}”</div><div class="log">${v.log.map(t=>`<div>${esc(t)}</div>`).join("")}</div></div>
     ${v.over?"":`<button class="btn ghost" id="exit">Sair da partida</button>`}`;
   if (rotFrom){ requestAnimationFrame(()=>requestAnimationFrame(()=>{ const r=document.getElementById("rot"); if(r) r.style.transform="rotate(0deg)"; })); }

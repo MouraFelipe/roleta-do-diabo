@@ -33,7 +33,9 @@ try:
       act(G,0,{t:'spin',n:1}); o.afterSpin=G.cyl.map(c=>c.id).join(); // a câmara 1 (bala) foi para o lugar 2
       act(G,0,{t:'pass'}); o.cold={turn:G.turn, alive:G.players.filter(p=>p.alive).length, c1:G.players[1].coins};
       G.start-=6*6e4; act(G,1,{t:'spin',n:-1}); o.heated=G.heated;            // bala volta para o lugar 1 (jogador 1)
-      act(G,1,{t:'pass'}); o.dead=!G.players[1].alive; o.seats=G.seats.join(); o.over=G.over; o.winners=G.result&&G.result.winners.join();
+      G.cfg.devil=false; act(G,1,{t:'pass'}); o.noShotOnPass=G.players.every(p=>p.alive) && G.phase==='play';
+      act(G,2,{t:'pass'}); o.shotPhase=G.phase; G.sh.who=1; G.sh.at=0; stepShot(G); o.aimed=G.aim; G.sh.at=0; stepShot(G);
+      o.dead=!G.players[1].alive; o.seats=G.seats.join(); o.over=G.over; o.winners=G.result&&G.result.winners.join();
       const H=newGame(L(3)); H.turn=0; H.players.forEach(p=>p.coins=20); H.pub[0]='V'; H.players[0].know[1]='B'; H.players[1].know[2]='V';
       act(H,0,{t:'hide'}); o.hide={pub:Object.keys(H.pub).length, mine:JSON.stringify(H.players[0].know), other:Object.keys(H.players[1].know).length, coins:H.players[0].coins};
       // giro cego: todos perdem o que sabiam
@@ -64,7 +66,7 @@ try:
     print("regras:", r); assert r["b8"]==3 and r["b10"]==3 and r["tDv"]=={"phase":"devil","wrong":True,"mine":True,"notMine":False,"kept":True} and r["devilOff"] and r["devil"]=={"pub":0,"know":True,"newIds":True,"bullets":1}; assert r["blind"]=={"pub":0,"know":True,"bullets":1} and r["vPhase"]=="finale" and r["volta"]["over"] and r["volta"]["left"]==0 and r["volta"]["dead"]==2 and r["tSees"] and r["tRev"] and r["aPhase"]=="auction" and r["auc"]=={"phase":"play","win":True,"paid":True}; assert r["hide"] == {"pub": 0, "mine": '{"0":"V","1":"B"}', "other": 0, "coins": 14}
     assert (r["b3"], r["b4"], r["b5"], r["b6"]) == (1, 1, 2, 2) and r["notTurn"] and r["pub"] == "B" and r["c0"] == 19
     assert "vazia" in r["priv"] and r["secret"] and r["hidden"] and r["afterSpin"] == "2,0,1" and r["cold"] == {"turn": 1, "alive": 3, "c1": 21}
-    assert r["heated"] and r["dead"] and r["seats"] == "0,2" and r["over"] and r["winners"] == "0,2"   # acabou a bala, acabou a partida
+    assert r["noShotOnPass"] and r["shotPhase"]=="shot" and r["aimed"]==1 and r["heated"] and r["dead"] and r["seats"] == "0,2" and r["over"] and r["winners"] == "0,2"   # acabou a bala, acabou a partida
     # treino contra bots até o fim (arma esquenta na hora)
     p.click("#bots"); p.fill("#nm", "Felipe"); p.click("#go"); p.wait_for_selector(".stage"); p.wait_for_timeout(500); p.screenshot(path="/tmp/rd_jogo.png")
     p.evaluate("G.start-=6*6e4")
