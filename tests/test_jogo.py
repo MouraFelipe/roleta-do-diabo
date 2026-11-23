@@ -49,7 +49,7 @@ try:
       // traidor: vê as balas; acusação certa revela
       const T=newGame(L(4),{mode:'traidor'}); T.players.forEach(p=>p.coins=20); const tv=viewFor(T,T.traitor), ov=viewFor(T,(T.traitor+1)%4);
       o.tSees=Object.keys(tv.know).length===4 && tv.isTraitor && ov.traitor===-1 && Object.keys(ov.know).length===0;
-      const acc=T.turn===T.traitor ? T.seats.find(x=>x!==T.traitor) : T.turn; T.turn=acc; act(T,acc,{t:'accuse',target:T.traitor}); o.tRev=T.revealed && T.players[T.traitor].coins===0;
+      const acc=T.turn===T.traitor ? T.seats.find(x=>x!==T.traitor) : T.turn; T.turn=acc; const b0=bulletsLeft(T), c0=T.players[acc].coins; act(T,acc,{t:'accuse',target:T.traitor}); o.tRev=T.revealed && !T.players[T.traitor].alive && T.players[acc].coins===c0-4+10 && T.seats.length===3 && bulletsLeft(T)===b0 && !T.over;
       // leilão: depois de uma volta, maior lance vê tudo e todos pagam
       const A=newGame(L(3),{mode:'leilao'}); A.players.forEach(p=>p.coins=10);
       for(let k=0;k<3;k++){ act(A,A.turn,{t:'peekPub',s:0}); act(A,A.turn,{t:'pass'}); }

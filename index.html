@@ -144,7 +144,7 @@ const DEF = {coins:5, income:1, heatSec:60, mode:"padrao", auctionSec:20, devil:
 const MODES = {
   padrao:{name:"Padrão", desc:"Depois que a arma esquenta, no fim de cada volta ela passa por cada um, em ordem, até acertar uma bala."},
   volta:{name:"Volta completa", desc:"Ninguém leva tiro antes. Quando a arma esquenta, ela passa por cada um, em ordem, até a última bala."},
-  traidor:{name:"Traidor oculto", desc:"Um jogador secreto serve ao Diabo e vê as balas. Ele vence se sobreviver sem ser descoberto."},
+  traidor:{name:"Traidor oculto", desc:"Um jogador secreto serve ao Diabo e vê as balas. Ele vence se sobreviver sem ser descoberto. Quem descobrir ganha 10 moedas e ele morre."},
   leilao:{name:"Leilão da bala", desc:"A cada volta da mesa, lances escondidos: quem der mais vê onde estão todas as balas."}
 };
 const MAXP = 10;
@@ -230,7 +230,14 @@ function act(G, i, a){
   }
   if (a.t === "accuse"){
     const t=G.players[a.target];
-    if (a.target===G.traitor){ G.revealed=true; t.coins=0; log(G, `⚖️ ${p.name} acusou ${t.name}: ERA o servo do Diabo! Ele perdeu todas as moedas.`); }
+    if (a.target===G.traitor){                             // descoberto: o servo morre e quem descobriu ganha 10 moedas
+      G.revealed=true; t.alive=false; p.coins+=10; const ts=seatOf(G,a.target), had=G.cyl[ts].b;
+      G.seats.splice(ts,1); G.cyl.splice(ts,1);
+      if (had){ const free=G.cyl.filter(c=>!c.b); if (free.length) free[rnd(free.length)].b=true; }   // a bala dele volta ao tambor, em lugar secreto
+      log(G, `⚖️ ${p.name} acusou ${t.name}: ERA o servo do Diabo! Ele morreu e ${p.name} ganhou 10 moedas.`); G.fx={k:"bang"};
+      if (G.seats.length<=1){ finish(G); }
+      return {ok:1};
+    }
     else log(G, `⚖️ ${p.name} acusou ${t.name}... e errou.`);
     G.fx={k:"peek"}; return {ok:1};
   }
@@ -621,7 +628,7 @@ function draw(){
       ${A("s-2", IC.b2, "Voltar 2", "Volta 2 casas")}
       <div style="grid-column:1/-1">${A("hide", IC.secret, "Esconder as balas", "Apaga o que os outros sabem · você continua sabendo")}</div>
       <div style="grid-column:1/-1">${A("blind", IC.f2, "Giro cego", "Gira sem ninguém ver quanto · todos perdem o que sabiam")}</div>
-      ${v.mode==="traidor"&&!v.isTraitor?`<div style="grid-column:1/-1">${A("accuse", IC.skull, "Acusar o servo do Diabo", v.revealed?"Já foi descoberto":"Acertou: ele perde tudo · errou: perde a moeda", v.revealed)}</div>`:""}
+      ${v.mode==="traidor"&&!v.isTraitor?`<div style="grid-column:1/-1">${A("accuse", IC.skull, "Acusar o servo do Diabo", v.revealed?"Já foi descoberto":"Acertou: ele morre e você ganha 10 · errou: perde o que pagou", v.revealed)}</div>`:""}
     </div>
     <button class="shoot" id="pass" ${mine?"":"disabled"}>Passar a vez</button>`}
     <div class="card"><div class="quote">“${esc(DEVIL[v.log.length%DEVIL.length])}”</div><div class="log">${v.log.map(t=>`<div>${esc(t)}</div>`).join("")}</div></div>
