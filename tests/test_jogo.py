@@ -28,6 +28,7 @@ try:
       const G=newGame(L(3),{heatSec:300}); G.seats=[0,1,2]; G.cyl=[{id:0,b:false},{id:1,b:true},{id:2,b:false}]; G.turn=0; G.players.forEach(p=>p.coins=20); G.acted=false;
       o.notTurn=act(G,1,{t:'peekPub',s:0}).err;
       act(G,0,{t:'peekPub',s:1}); o.pub=G.pub[1]; o.c0=G.players[0].coins; o.prices=[COST.s1,COST.s2,COST['s-1'],COST['s-2']].join();
+      o.show=viewFor(G,2).pub[1]==='B'; G.pubAt[1]-=SHOW_MS+1; o.gone=viewFor(G,2).pub[1]===undefined && G.pub[1]==='B';
       const s=act(G,0,{t:'peekSec',s:2}); o.priv=s.priv; o.secret=G.players[0].know[2]==='V' && !G.players[1].know[2];
       o.hidden=!JSON.stringify(viewFor(G,1)).includes('"b"');
       act(G,0,{t:'spin',n:1}); o.afterSpin=G.cyl.map(c=>c.id).join(); // a câmara 1 (bala) foi para o lugar 2
@@ -65,6 +66,7 @@ try:
       act(T2,T2.traitor,{t:'devil',spin:false}); o.tDv.kept=T2.pub[0]==='V' && T2.phase==='play';
       return o; }""")
     print("regras:", r); assert r["b8"]==3 and r["b10"]==3 and r["tDv"]=={"phase":"devil","wrong":True,"mine":True,"notMine":False,"kept":True} and r["devilOff"] and r["devil"]=={"pub":0,"know":True,"newIds":True,"bullets":1}; assert r["blind"]=={"pub":0,"know":True,"bullets":1} and r["vPhase"]=="finale" and r["volta"]["over"] and r["volta"]["left"]==0 and r["volta"]["dead"]==2 and r["tSees"] and r["tRev"] and r["aPhase"]=="auction" and r["auc"]=={"phase":"play","win":True,"paid":True}; assert r["hide"] == {"pub": 0, "mine": '{"0":"V","1":"B"}', "other": 0, "coins": 14}
+    assert r["show"] and r["gone"], "a bala deve aparecer e sumir depois de 3 s"
     assert (r["b3"], r["b4"], r["b5"], r["b6"]) == (1, 1, 2, 2) and r["notTurn"] and r["pub"] == "B" and r["c0"] == 19
     assert "vazia" in r["priv"] and r["secret"] and r["hidden"] and r["afterSpin"] == "2,0,1" and r["cold"] == {"turn": 1, "alive": 3, "c1": 21}
     assert r["noShotOnPass"] and r["shotPhase"]=="shot" and r["order"]=="0,1,2" and r["aimed"]==0 and r["heated"] and r["dead"] and r["seats"] == "0,2" and r["over"] and r["winners"] == "0,2"   # acabou a bala, acabou a partida
@@ -77,7 +79,7 @@ try:
         p.wait_for_timeout(200)
     assert p.query_selector("#again"); print("treino:", p.inner_text(".status").replace("\n", " ")); p.close()
     if PEERJS:
-        q = "?peerhost=localhost&peerport=9000"
+        q = "?peerhost=127.0.0.1&peerport=9000"
         h = page(b); h.goto(URL + q); h.click("#host"); h.fill("#nm", "Felipe"); h.click("#go"); h.wait_for_selector(".code", timeout=15000); code = h.inner_text(".code"); print("sala:", code)
         gs = []
         for n in ["Ana", "Bia", "Caio"]:

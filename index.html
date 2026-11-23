@@ -140,6 +140,7 @@ const SIGIL = `<svg class="sigil" viewBox="0 0 100 100"><defs><linearGradient id
 const coin = n => `<span class="coin">${n}</span>`;
 /* ================== regras ================== */
 const COST = {peekPub:1, peekSec:3, hide:6, blind:7, accuse:4, "s1":3, "s2":3, "s-1":3, "s-2":3};
+const SHOW_MS = 3000;   // a bala só aparece por 3 s; depois os jogadores têm que lembrar
 const DEF = {coins:5, income:1, heatSec:60, mode:"padrao", auctionSec:20, devil:true};   // o dono da sala muda o tempo e o modo
 const MODES = {
   padrao:{name:"Padrão", desc:"Depois que a arma esquenta, no fim de cada volta ela passa por cada um, em ordem, até acertar uma bala."},
@@ -160,9 +161,9 @@ const now = () => Date.now();
 function newGame(list, cfg){
   const c = Object.assign({}, DEF, cfg||{}); if (!MODES[c.mode]) c.mode = "padrao";
   const order = list.map((_,i)=>i).sort(()=>Math.random()-.5);
-  const G = {players:list.map(p=>({id:p.id, name:p.name, bot:!!p.bot, alive:true, coins:c.coins, know:{}})),
+  const G = {players:list.map(p=>({id:p.id, name:p.name, bot:!!p.bot, alive:true, coins:c.coins, know:{}, knowAt:{}})),
              cfg:c, mode:c.mode, phase:"play", seats:order, cyl:order.map((_,i)=>({id:i, b:false})), nextId:order.length, passes:0,
-             turn:order[0], acted:false, pub:{}, start:now(), heatMs:c.heatSec*1e3, heated:false, log:[], over:false, result:null,
+             turn:order[0], acted:false, pub:{}, pubAt:{}, flash:0, start:now(), heatMs:c.heatSec*1e3, heated:false, log:[], over:false, result:null,
              traitor:-1, revealed:false, auc:null, fin:null, aim:-1, priv:[], seq:0, fx:null};
   const n = bulletsFor(order.length);
   G.cyl.map((_,i)=>i).sort(()=>Math.random()-.5).slice(0,n).forEach(i=>G.cyl[i].b=true);
@@ -174,6 +175,9 @@ function newGame(list, cfg){
 const seatOf = (G,i) => G.seats.indexOf(i);
 const bulletsLeft = G => G.cyl.filter(c=>c.b).length;
 const truth = G => { const t={}; G.cyl.forEach(c=>t[c.id]=c.b?"B":"V"); return t; };
+function seePub(G, id, v){ G.pub[id]=v; G.pubAt[id]=now(); G.flash=now()+SHOW_MS; }
+function seeKnow(G, p, id, v){ p.know[id]=v; p.knowAt[id]=now(); G.flash=now()+SHOW_MS; }
+const fresh = (m, at) => { const o={}, t=now(); for (const id in m) if (at && t-(at[id]||0) < SHOW_MS) o[id]=m[id]; return o; };
 function log(G, t){ G.log.unshift(t); G.log = G.log.slice(0,60); }
 function costOf(a){ return a.t==="spin" ? COST["s"+a.n] : COST[a.t]; }
 function checkHeat(G){
@@ -213,16 +217,16 @@ function act(G, i, a){
   if (a.t==="accuse" && (G.mode!=="traidor" || G.revealed || a.target===i || !G.players[a.target] || !G.players[a.target].alive)) return {err:"Acusação inválida"};
   p.coins -= c; G.acted = true; G.seq++;
   if (a.t === "peekPub"){
-    const ch=G.cyl[a.s], who=G.players[G.seats[a.s]].name; G.pub[ch.id]=ch.b?"B":"V";
-    log(G, `${p.name} espiou para todos a câmara de ${who}: ${ch.b?"TEM BALA!":"vazia."}`); G.fx={k:"peek"}; return {ok:1};
+    const ch=G.cyl[a.s], who=G.players[G.seats[a.s]].name; seePub(G, ch.id, ch.b?"B":"V");
+    log(G, `${p.name} espiou para todos a câmara de ${who}. Grave o que viu!`); G.fx={k:"peek"}; return {ok:1};
   }
   if (a.t === "peekSec"){
-    const ch=G.cyl[a.s], who=G.players[G.seats[a.s]].name; p.know[ch.id]=ch.b?"B":"V";
+    const ch=G.cyl[a.s], who=G.players[G.seats[a.s]].name; seeKnow(G, p, ch.id, ch.b?"B":"V");
     log(G, `${p.name} espiou uma câmara em segredo.`); G.fx={k:"peek"};
     return {ok:1, priv:`Câmara de ${who}: ${ch.b?"TEM BALA":"vazia"}`};
   }
   if (a.t === "hide"){                                     // apaga o que os outros sabem; quem escondeu continua sabendo
-    p.know = Object.assign({}, G.pub, p.know); G.pub = {}; G.players.forEach(x=>{ if(x!==p) x.know={}; });
+    p.know = Object.assign({}, G.pub, p.know); p.knowAt = Object.assign({}, G.pubAt||{}, p.knowAt); G.pub = {}; G.pubAt = {}; G.players.forEach(x=>{ if(x!==p){ x.know={}; x.knowAt={}; } });
     log(G, `🫥 ${p.name} escondeu as balas: ninguém mais sabe o que viu.`); G.fx={k:"hide"}; return {ok:1};
   }
   if (a.t === "blind"){
@@ -249,7 +253,7 @@ function act(G, i, a){
 }
 /* giro cego: gira uma quantidade sorteada e todos perdem o que sabiam (o servo do Diabo continua vendo) */
 function blindSpin(G){ const K=G.cyl.length; if (K>1){ const n=1+rnd(K-1); G.cyl=G.cyl.map((_,s)=>G.cyl[mod(s-n,K)]); }
-  G.pub={}; G.players.forEach(x=>x.know={}); G.cyl.forEach(c=>c.id=G.nextId++); G.fx={k:"blind"}; }
+  G.pub={}; G.pubAt={}; G.players.forEach(x=>{ x.know={}; x.knowAt={}; }); G.cyl.forEach(c=>c.id=G.nextId++); G.fx={k:"blind"}; }
 function pass(G, i){
   const p=G.players[i], s=seatOf(G,i); G.seq++; G.fx=null;
   log(G, `${p.name} passou a vez.`);
@@ -284,7 +288,7 @@ function stepShot(G){
     if (G.turn===who){ G.turn=G.seats[mod(s, G.seats.length)]; G.players[G.turn].coins += G.cfg.income; }
     lapEnd(G); return true;
   }
-  G.pub[ch.id]="V"; G.fx={k:"click"}; log(G, `Clique... ${p.name} escapou.`); h.idx++; h.step="aim"; h.at=now()+1200; return true;
+  seePub(G, ch.id, "V"); G.fx={k:"click"}; log(G, `Clique... ${p.name} escapou.`); h.idx++; h.step="aim"; h.at=now()+1200; return true;
 }
 function afterLap(G){
   G.phase="play";
@@ -310,8 +314,8 @@ function bid(G, i, v){
 function resolveAuction(G){
   const bids=G.auc.bids; let max=0, top=[];
   G.seats.forEach(i=>{ const v=bids[i]||0; G.players[i].coins-=v; if(v>max){ max=v; top=[i]; } else if(v===max && v>0) top.push(i); });
-  if (top.length===1){ const w=G.players[top[0]]; w.know=Object.assign(w.know, truth(G));
-    G.priv.push({i:top[0], msg:"Você venceu o leilão: as balas estão marcadas no tambor"});
+  if (top.length===1){ const w=G.players[top[0]]; const tr=truth(G); for (const id in tr) seeKnow(G, w, id, tr[id]);
+    G.priv.push({i:top[0], msg:"Você venceu o leilão: as balas aparecem no tambor por 3 segundos. Grave!"});
     log(G, `🔨 ${w.name} venceu o leilão com ${max} moeda${max>1?"s":""} e viu onde estão as balas.`); }
   else log(G, top.length ? `🔨 Empate em ${max}: ninguém viu nada, mas todos pagaram.` : "🔨 Ninguém deu lance.");
   G.phase="play"; G.auc=null; G.seq++; G.fx={k:"peek"};
@@ -324,7 +328,7 @@ function stepFinale(G){
   if (f.step==="aim"){ G.aim=pi; G.fx={k:"aim"}; log(G, `A arma aponta para ${p.name}...`); f.step="fire"; f.at=now()+2000; return true; }
   const ch=G.cyl[seatOf(G,pi)];
   if (ch.b){ ch.b=false; ch.spent=true; p.alive=false; G.fx={k:"bang"}; log(G, `💥 BANG! ${p.name} foi atingido.`); }
-  else { G.pub[ch.id]="V"; G.fx={k:"click"}; log(G, `Clique... ${p.name} escapou.`); }
+  else { seePub(G, ch.id, "V"); G.fx={k:"click"}; log(G, `Clique... ${p.name} escapou.`); }
   f.idx++; f.step="aim"; f.at=now()+1600;
   if (!bulletsLeft(G)) { f.at=now()+1200; }
   return true;
@@ -333,8 +337,8 @@ function stepFinale(G){
 function viewFor(G, i){
   const isT = G.mode==="traidor" && i===G.traitor;
   return {players:G.players.map(p=>({name:p.name, bot:p.bot, alive:p.alive, coins:p.coins})), me:i, turn:G.turn, acted:G.acted,
-          mode:G.mode, phase:G.phase, seats:G.seats, cyl:G.cyl.map(c=>c.id), spent:G.cyl.filter(c=>c.spent).map(c=>c.id), pub:G.pub,
-          know: isT ? truth(G) : (G.players[i]?G.players[i].know:{}), bullets:bulletsLeft(G),
+          mode:G.mode, phase:G.phase, seats:G.seats, cyl:G.cyl.map(c=>c.id), spent:G.cyl.filter(c=>c.spent).map(c=>c.id), pub:fresh(G.pub, G.pubAt),
+          know: isT ? truth(G) : (G.players[i]?fresh(G.players[i].know, G.players[i].knowAt):{}), bullets:bulletsLeft(G),
           heated:G.heated, heatLeft:Math.max(0,G.start+G.heatMs-now()), heatMs:G.heatMs, log:G.log, over:G.over, result:G.result, aim:G.aim,
           isTraitor:isT, traitor:(isT||G.revealed||G.over)?G.traitor:-1, revealed:G.revealed,
           dv:G.phase==="devil"&&G.dv?{mine:G.dv.who===i, left:Math.max(0,G.dv.at-now())}:null,
@@ -362,6 +366,7 @@ function botAction(G, i){
 /* relógio de quem roda o jogo: esquentar, leilão, lances dos bots e o final */
 function hostTick(G){
   let ch = checkHeat(G);
+  if (G.flash && now()>=G.flash){ G.flash=0; ch=true; }   // acabaram os 3 s: esconde a bala de novo
   if (G.phase==="auction"){
     G.seats.forEach(x=>{ const p=G.players[x]; if(p.bot && G.auc && G.auc.bids[x]==null){ bid(G, x, rnd(Math.min(p.coins,4)+1)); ch=true; } });
     if (G.auc && now()>=G.auc.at){ resolveAuction(G); ch=true; }
@@ -401,6 +406,7 @@ function home(){
       <li><i>${IC.cyl}</i><span>De 3 a ${MAXP} jogadores. Cada câmara do tambor aponta para um jogador. Até 4 jogadores: 1 bala · 5 a 7: 2 balas · 8 a 10: 3 balas.</span></li>
       <li><i>${IC.users}</i><span>Cada um joga na sua vez, em ordem: faça ações (ou não) e passe. Opcional: no fim de cada volta, <b>o Diabo gira o tambor às cegas</b> e ninguém sabe mais nada. No Traidor oculto, quem decide é o servo do Diabo.</span></li>
       <li><i>${IC.coin}</i><span>Todos começam com ${DEF.coins} moedas e ganham +${DEF.income} no começo de cada vez.</span></li>
+      <li><i>${IC.eye}</i><span><b>A bala só aparece por 3 segundos.</b> Depois ela some e cada um tem que lembrar onde estava, inclusive depois dos giros.</span></li>
       <li><i>${IC.eye}</i><span><b>Espiar público</b> · ${COST.peekPub} — escolha a câmara de alguém; todos veem se tem bala.</span></li>
       <li><i>${IC.secret}</i><span><b>Espiar secreto</b> · ${COST.peekSec} — só você vê. Conte para um aliado... ou minta.</span></li>
       <li><i>${IC.skull}</i><span><b>Esconder as balas</b> · ${COST.hide} — apaga o que os outros sabem; você continua sabendo. Combine com outra ação.</span></li>
