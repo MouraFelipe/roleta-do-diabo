@@ -4,10 +4,11 @@ Roleta russa de 3 a 6 jogadores, com moedas para espiar e manipular o tambor. Fe
 
 ## Regras (base de todos os modos)
 - De 3 a 6 jogadores. Cada câmara do tambor aponta para um jogador. Até 4 jogadores: 1 bala. Com 5 ou 6: 2 balas.
-- Cada um joga na sua vez, em ordem, e faz pelo menos 1 ação antes de passar.
+- Cada um joga na sua vez, em ordem: faz ações (opcionais) e passa.
+- Opcional (ligado por padrão, o dono da sala escolhe): no fim de cada volta da mesa, o Diabo dá um giro cego: o tambor gira uma quantidade sorteada e todos perdem o que sabiam.
 - Todos começam com 5 moedas e ganham +1 no começo de cada vez.
 - Ações: espiar público (1), espiar secreto (3), esconder as balas (6), giro cego (7), girar 1/2 (2/3), voltar 1/2 (4/5).
-- A arma esquenta depois de um tempo que o dono da sala ajusta (30 s a 15 min, padrão 2 min).
+- A arma esquenta depois de um tempo que o dono da sala ajusta (30 s a 15 min, padrão 1 min).
 - A partida acaba quando a última bala é disparada. Quem estiver vivo vence; o mais rico é o campeão.
 
 ## Modos

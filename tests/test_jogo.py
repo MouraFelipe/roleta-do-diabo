@@ -26,7 +26,7 @@ try:
     r = p.evaluate("""()=>{ const L=n=>[...Array(n)].map((_,i)=>({id:'p'+i,name:'P'+i}));
       const o={}; o.b3=bulletsLeft(newGame(L(3))); o.b4=bulletsLeft(newGame(L(4))); o.b5=bulletsLeft(newGame(L(5))); o.b6=bulletsLeft(newGame(L(6)));
       const G=newGame(L(3),{heatSec:300}); G.seats=[0,1,2]; G.cyl=[{id:0,b:false},{id:1,b:true},{id:2,b:false}]; G.turn=0; G.players.forEach(p=>p.coins=20); G.acted=false;
-      o.passFirst=act(G,0,{t:'pass'}).err; o.notTurn=act(G,1,{t:'peekPub',s:0}).err;
+      o.notTurn=act(G,1,{t:'peekPub',s:0}).err;
       act(G,0,{t:'peekPub',s:1}); o.pub=G.pub[1]; o.c0=G.players[0].coins;
       const s=act(G,0,{t:'peekSec',s:2}); o.priv=s.priv; o.secret=G.players[0].know[2]==='V' && !G.players[1].know[2];
       o.hidden=!JSON.stringify(viewFor(G,1)).includes('"b"');
@@ -52,9 +52,14 @@ try:
       for(let k=0;k<3;k++){ act(A,A.turn,{t:'peekPub',s:0}); act(A,A.turn,{t:'pass'}); }
       o.aPhase=A.phase; const [x,y,z]=A.seats; bid(A,x,5); bid(A,y,2); const cx=A.players[x].coins; bid(A,z,0);
       o.auc={phase:A.phase, win:Object.keys(A.players[x].know).length===3, paid:A.players[x].coins===cx-5 && A.priv.length===1};
+      // fim da volta: o Diabo gira às cegas e apaga o que se sabia
+      const D=newGame(L(3)); D.pub[0]='V'; D.players[0].know[1]='B'; const ids=D.cyl.map(c=>c.id).join();
+      for(let k=0;k<3;k++) act(D,D.turn,{t:'pass'});
+      o.devil={pub:Object.keys(D.pub).length, know:D.players.every(p=>!Object.keys(p.know).length), newIds:D.cyl.map(c=>c.id).join()!==ids, bullets:bulletsLeft(D)};
+      const E=newGame(L(3),{devil:false}); E.pub[0]='V'; for(let k=0;k<3;k++) act(E,E.turn,{t:'pass'}); o.devilOff=E.pub[0]==='V';
       return o; }""")
-    print("regras:", r); assert r["blind"]=={"pub":0,"know":True,"bullets":1} and r["vPhase"]=="finale" and r["volta"]["over"] and r["volta"]["left"]==0 and r["volta"]["dead"]==2 and r["tSees"] and r["tRev"] and r["aPhase"]=="auction" and r["auc"]=={"phase":"play","win":True,"paid":True}; assert r["hide"] == {"pub": 0, "mine": '{"0":"V","1":"B"}', "other": 0, "coins": 14}
-    assert (r["b3"], r["b4"], r["b5"], r["b6"]) == (1, 1, 2, 2) and r["passFirst"] and r["notTurn"] and r["pub"] == "B" and r["c0"] == 19
+    print("regras:", r); assert r["devilOff"] and r["devil"]=={"pub":0,"know":True,"newIds":True,"bullets":1}; assert r["blind"]=={"pub":0,"know":True,"bullets":1} and r["vPhase"]=="finale" and r["volta"]["over"] and r["volta"]["left"]==0 and r["volta"]["dead"]==2 and r["tSees"] and r["tRev"] and r["aPhase"]=="auction" and r["auc"]=={"phase":"play","win":True,"paid":True}; assert r["hide"] == {"pub": 0, "mine": '{"0":"V","1":"B"}', "other": 0, "coins": 14}
+    assert (r["b3"], r["b4"], r["b5"], r["b6"]) == (1, 1, 2, 2) and r["notTurn"] and r["pub"] == "B" and r["c0"] == 19
     assert "vazia" in r["priv"] and r["secret"] and r["hidden"] and r["afterSpin"] == "2,0,1" and r["cold"] == {"turn": 1, "alive": 3, "c1": 21}
     assert r["heated"] and r["dead"] and r["seats"] == "0,2" and r["over"] and r["winners"] == "0,2"   # acabou a bala, acabou a partida
     # treino contra bots até o fim (arma esquenta na hora)
@@ -71,7 +76,7 @@ try:
         gs = []
         for n in ["Ana", "Bia", "Caio"]:
             g = page(b); g.goto(URL + q + "#sala-" + code); g.click("#joinHash"); g.fill("#nm", n); g.click("#go"); g.wait_for_selector("text=Esperando", timeout=15000); gs.append(g)
-        h.wait_for_selector("#start:not([disabled])"); h.click("#hm-"); h.click("#hm-"); gs[0].wait_for_selector("text=esquenta em 1:00"); h.screenshot(path="/tmp/rd_sala.png"); h.click("#start")
+        h.wait_for_selector("#start:not([disabled])"); h.click("[id='hm-']"); gs[0].wait_for_selector("text=esquenta em 0:30"); h.click("#dv"); gs[0].wait_for_selector("text=desligado"); h.click("#dv"); gs[0].wait_for_selector("b:text-is('ligado')"); h.screenshot(path="/tmp/rd_sala.png"); h.click("#start")
         for g in gs: g.wait_for_selector(".stage")
         allp = [h] + gs
         # um segredo só aparece para quem espiou
