@@ -7,12 +7,12 @@ Roleta russa de 3 a 6 jogadores, com moedas para espiar e manipular o tambor. Fe
 - Cada um joga na sua vez, em ordem: faz ações (opcionais) e passa.
 - Opcional (ligado por padrão, o dono da sala escolhe): no fim de cada volta da mesa, o Diabo dá um giro cego: o tambor gira uma quantidade sorteada e todos perdem o que sabiam. No Traidor oculto, o servo do Diabo decide se gira (15 s; sem resposta, não gira).
 - Todos começam com 5 moedas e ganham +1 no começo de cada vez.
-- Ações: espiar público (1), espiar secreto (3), esconder as balas (6), giro cego (7), girar 1/2 (2/3), voltar 1/2 (4/5).
+- Ações: espiar público (1), espiar secreto (3), esconder as balas (6), giro cego (7), girar ou voltar 1 ou 2 casas (3 cada).
 - A arma esquenta depois de um tempo que o dono da sala ajusta (30 s a 15 min, padrão 1 min).
 - A partida acaba quando a última bala é disparada. Quem estiver vivo vence; o mais rico é o campeão.
 
 ## Modos
-- **Padrão:** depois que a arma esquenta, no fim de cada volta ela dispara uma vez em um jogador sorteado (vale também para Traidor oculto e Leilão). Passar a vez é grátis.
+- **Padrão:** depois que a arma esquenta, no fim de cada volta ela passa por cada um, em ordem, até acertar uma bala (vale também para Traidor oculto e Leilão). Passar a vez é grátis.
 - **Volta completa:** ninguém leva tiro antes. Quando a arma esquenta, ela aponta para cada um, em ordem, até a última bala.
 - **Traidor oculto:** um jogador secreto é o servo do Diabo e vê todas as balas. Ele vence se sobreviver sem ser descoberto. Acusar custa 4: se acertar, ele perde todas as moedas.
 - **Leilão da bala:** a cada volta da mesa, lances escondidos. O maior lance vê onde estão todas as balas; todos pagam o próprio lance; empate, ninguém vê.
