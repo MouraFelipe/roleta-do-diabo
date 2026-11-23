@@ -1,6 +1,6 @@
-"""Testa as regras, o modo contra bots, o passa e joga e a sala online (3 navegadores).
-Online usa um servidor PeerJS local: precisa de `npx peerjs --port 9000` (pacote `peer`) rodando.
-Uso: python tests/test_jogo.py [pasta do pacote peerjs para servir o script offline]"""
+"""Testa as regras, o treino contra bots e a sala online (3 navegadores).
+Online usa um servidor PeerJS local na porta 9000 (pacote `peer`).
+Uso: python tests/test_jogo.py [caminho do peerjs.min.js para servir sem internet]"""
 import os, subprocess, sys, time
 from playwright.sync_api import sync_playwright
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -8,77 +8,66 @@ PEERJS = sys.argv[1] if len(sys.argv) > 1 else None
 srv = subprocess.Popen([sys.executable, "-m", "http.server", "8810", "--directory", ROOT], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); time.sleep(1)
 URL = "http://localhost:8810/index.html"
 errors = []
-def page(ctx):
-    p = ctx.new_page(); p.on("pageerror", lambda e: errors.append(str(e)))
+def page(b):
+    p = b.new_context(viewport={"width": 390, "height": 844}, service_workers="block").new_page(); p.on("pageerror", lambda e: errors.append(str(e)))
     if PEERJS: p.route("**/peerjs.min.js", lambda r: r.fulfill(path=PEERJS, content_type="application/javascript"))
     p.route("**/fonts.googleapis.com/**", lambda r: r.abort()); return p
+def play_turn(x):
+    """faz 1 ação barata e passa"""
+    if x.query_selector('[data-a="peekPub"]:not([disabled])'):
+        x.click('[data-a="peekPub"]'); x.click('[data-s="0"]')
+    else: x.click('[data-a="s1"]')
+    x.wait_for_selector("#pass:not([disabled]), #again"); 
+    if x.query_selector("#pass"): x.click("#pass")
 try:
   with sync_playwright() as pw:
     b = pw.chromium.launch()
-    ctx = b.new_context(viewport={"width": 390, "height": 844}, service_workers="block")
-    p = page(ctx); p.goto(URL); p.wait_for_selector("#bots")
-    # regras puras
-    r = p.evaluate("""()=>{ const G=newGame([{id:'a',name:'A'},{id:'b',name:'B'},{id:'c',name:'C'}]); G.turn=0; G.pos=2; G.bullet=3;
-      const out={};
-      out.notTurn = act(G,1,{t:'shoot'}).err;
-      act(G,0,{t:'peekPub'}); out.pub=G.pub[2]; out.coins=G.players[0].coins;
-      const s=act(G,0,{t:'peekSec',c:1}); out.priv=s.priv; out.secretOnlyA = G.players[0].know[3]==='B' && !G.players[1].know[3] && !G.pub[3];
-      out.v = JSON.stringify(viewFor(G,1)).includes('bullet');
-      act(G,0,{t:'shoot'}); out.after={pos:G.pos, coins:G.players[0].coins, turn:G.turn};
-      act(G,1,{t:'spin',n:-1}); out.back=G.pos; out.c1=G.players[1].coins;
-      out.broke = act(G,1,{t:'spin',n:-2}).err;
-      act(G,1,{t:'spin',n:2}); out.fwd=G.pos;           // 5
-      act(G,1,{t:'spin',n:-2});                          // 3 = bala
-      return out; }""")
+    p = page(b); p.goto(URL); p.wait_for_selector("#host")
+    r = p.evaluate("""()=>{ const L=n=>[...Array(n)].map((_,i)=>({id:'p'+i,name:'P'+i}));
+      const o={}; o.b3=bulletsLeft(newGame(L(3))); o.b4=bulletsLeft(newGame(L(4))); o.b5=bulletsLeft(newGame(L(5))); o.b6=bulletsLeft(newGame(L(6)));
+      const G=newGame(L(3),{heatMin:5}); G.seats=[0,1,2]; G.cyl=[{id:0,b:false},{id:1,b:true},{id:2,b:false}]; G.turn=0; G.players.forEach(p=>p.coins=20); G.acted=false;
+      o.passFirst=act(G,0,{t:'pass'}).err; o.notTurn=act(G,1,{t:'peekPub',s:0}).err;
+      act(G,0,{t:'peekPub',s:1}); o.pub=G.pub[1]; o.c0=G.players[0].coins;
+      const s=act(G,0,{t:'peekSec',s:2}); o.priv=s.priv; o.secret=G.players[0].know[2]==='V' && !G.players[1].know[2];
+      o.hidden=!JSON.stringify(viewFor(G,1)).includes('"b"');
+      act(G,0,{t:'spin',n:1}); o.afterSpin=G.cyl.map(c=>c.id).join(); // a câmara 1 (bala) foi para o lugar 2
+      act(G,0,{t:'pass'}); o.cold={turn:G.turn, alive:G.players.filter(p=>p.alive).length, c1:G.players[1].coins};
+      G.start-=6*6e4; act(G,1,{t:'spin',n:-1}); o.heated=G.heated;            // bala volta para o lugar 1 (jogador 1)
+      act(G,1,{t:'pass'}); o.dead=!G.players[1].alive; o.seats=G.seats.join(); o.turn=G.turn; o.reloaded=bulletsLeft(G); o.over=G.over;
+      return o; }""")
     print("regras:", r)
-    assert r["notTurn"] and r["pub"] == "V" and r["coins"] == 4 and "TEM BALA" in r["priv"] and r["secretOnlyA"] and not r["v"]
-    assert r["after"] == {"pos": 3, "coins": 2, "turn": 1} and r["back"] == 2 and r["c1"] == 1 and r["broke"]
-    bang = p.evaluate("""()=>{ const G=newGame([{id:'a',name:'A'},{id:'b',name:'B'},{id:'c',name:'C'}]); G.turn=0; G.pos=1; G.bullet=1;
-       act(G,0,{t:'shoot'}); const r1={alive:G.players[0].alive, turn:G.turn, round:G.round, pub:Object.keys(G.pub).length};
-       G.pos=G.bullet; act(G,G.turn,{t:'shoot'}); return {r1, over:G.over, winner:G.winner}; }""")
-    print("eliminação:", bang); assert bang["r1"] == {"alive": False, "turn": 1, "round": 2, "pub": 0} and bang["over"] and bang["winner"] == 2
-    # contra bots até o fim
-    p.click("#bots"); p.fill("#nm", "Felipe"); p.click("#go"); p.wait_for_selector(".stage")
-    p.screenshot(path="/tmp/rd_jogo.png")
-    for _ in range(1500):
+    assert (r["b3"], r["b4"], r["b5"], r["b6"]) == (1, 1, 2, 2) and r["passFirst"] and r["notTurn"] and r["pub"] == "B" and r["c0"] == 19
+    assert "vazia" in r["priv"] and r["secret"] and r["hidden"] and r["afterSpin"] == "2,0,1" and r["cold"] == {"turn": 1, "alive": 3, "c1": 21}
+    assert r["heated"] and r["dead"] and r["seats"] == "0,2" and r["turn"] == 2 and r["reloaded"] == 1 and not r["over"]
+    # treino contra bots até o fim (arma esquenta na hora)
+    p.click("#bots"); p.fill("#nm", "Felipe"); p.click("#go"); p.wait_for_selector(".stage"); p.wait_for_timeout(500); p.screenshot(path="/tmp/rd_jogo.png")
+    p.evaluate("G.start-=6*6e4")
+    for _ in range(600):
         if p.query_selector("#again"): break
-        if p.query_selector("#shoot:not([disabled])"):
-            if p.query_selector('[data-a="peekSec"]:not([disabled])') and not p.query_selector(".pick"):
-                p.click('[data-a="peekSec"]'); p.click('[data-o="0"]'); p.wait_for_timeout(200); p.screenshot(path="/tmp/rd_secreto.png")
-            p.click("#shoot")
-        p.wait_for_timeout(250)
-    assert p.query_selector("#again"); print("contra bots:", p.inner_text(".status").replace("\n", " ")); p.screenshot(path="/tmp/rd_fim.png")
-    # passa e joga
-    p.click("#exit"); p.click("#local"); p.wait_for_selector(".pn")
-    for i, n in enumerate(["Ana", "Bia", "Caio"]): p.locator(".pn").nth(i).fill(n)
-    p.click("#go"); p.wait_for_selector("#rv"); p.screenshot(path="/tmp/rd_passa.png"); who = p.inner_text("h1"); p.click("#rv"); p.wait_for_selector("#shoot")
-    p.click("#shoot"); assert p.query_selector("#rv") or p.query_selector("#again"); print("passa e joga: primeiro foi", who)
-    p.close()
-    # online: 3 navegadores
+        if p.query_selector('#pass') and p.evaluate("G.turn===ME && G.players[ME].alive"): play_turn(p)
+        p.wait_for_timeout(200)
+    assert p.query_selector("#again"); print("treino:", p.inner_text(".status").replace("\n", " ")); p.close()
     if PEERJS:
         q = "?peerhost=localhost&peerport=9000"
-        h = page(b.new_context(viewport={"width": 390, "height": 844}, service_workers="block")); h.goto(URL.replace("index.html", "index.html" + q))
-        h.click("#host"); h.fill("#nm", "Felipe"); h.click("#go"); h.wait_for_selector(".code", timeout=15000); code = h.inner_text(".code"); print("sala:", code)
+        h = page(b); h.goto(URL + q); h.click("#host"); h.fill("#nm", "Felipe"); h.click("#go"); h.wait_for_selector(".code", timeout=15000); code = h.inner_text(".code"); print("sala:", code)
         gs = []
-        for n in ["Ana", "Bia"]:
-            g = page(b.new_context(viewport={"width": 390, "height": 844}, service_workers="block")); g.goto(URL + q + "#sala-" + code)
-            g.click("#joinHash"); g.fill("#nm", n); g.click("#go"); g.wait_for_selector("text=Esperando", timeout=15000); gs.append(g)
-        h.wait_for_selector("#start:not([disabled])"); h.screenshot(path="/tmp/rd_sala.png"); h.click("#start")
+        for n in ["Ana", "Bia", "Caio"]:
+            g = page(b); g.goto(URL + q + "#sala-" + code); g.click("#joinHash"); g.fill("#nm", n); g.click("#go"); g.wait_for_selector("text=Esperando", timeout=15000); gs.append(g)
+        h.wait_for_selector("#start:not([disabled])"); h.select_option("#hm", "1"); gs[0].wait_for_selector("text=esquenta em 1 min"); h.screenshot(path="/tmp/rd_sala.png"); h.click("#start")
         for g in gs: g.wait_for_selector(".stage")
-        all_p = [h] + gs; secret_seen = False
-        for _ in range(300):
+        allp = [h] + gs
+        # um segredo só aparece para quem espiou
+        t = next(x for x in allp if x.query_selector("#pass") and "Sua vez" in x.inner_text(".status"))
+        t.click('[data-a="peekSec"]'); t.click('[data-s="1"]'); t.wait_for_selector(".toast"); print("segredo:", t.inner_text(".toast"))
+        time.sleep(.5); assert not any(o.query_selector("circle[stroke-dasharray='4 4']") for o in allp if o is not t)
+        t.click("#pass"); h.evaluate("G.start-=2*6e4"); time.sleep(1.2); assert "quente" in gs[1].inner_text(".heat"); gs[1].screenshot(path="/tmp/rd_quente.png")
+        for _ in range(400):
             if h.query_selector("#again"): break
-            for x in all_p:
-                if x.query_selector("#shoot:not([disabled])"):
-                    if not secret_seen and x.query_selector('[data-a="peekSec"]:not([disabled])'):
-                        x.click('[data-a="peekSec"]'); x.click('[data-o="0"]'); x.wait_for_selector(".toast"); t = x.inner_text(".toast")
-                        others = [o for o in all_p if o is not x]; secret_seen = True
-                        print("segredo:", t, "| outros veem marca secreta?", any(o.query_selector('circle[stroke-dasharray]') for o in others))
-                        assert not any(o.query_selector('circle[stroke-dasharray]') for o in others)
-                    x.click("#shoot"); x.wait_for_timeout(300)
-            h.wait_for_timeout(150)
-        for x in all_p: x.wait_for_selector("#again", timeout=10000)
-        print("online:", [x.inner_text(".win") for x in all_p])
+            for x in allp:
+                if x.query_selector("#pass") and "Sua vez" in x.inner_text(".status"): play_turn(x); break
+            time.sleep(.25)
+        for x in allp: x.wait_for_selector(".win", timeout=10000)
+        print("online:", [x.inner_text(".win") for x in allp])
     b.close()
   print("erros:", errors); assert not errors
 finally:
