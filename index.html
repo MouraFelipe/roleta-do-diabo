@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#140b0d">
+<title>Roleta do Diabo</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg"><link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0708;--card:#150e10;--card2:#1c1316;--line:#2e1f23;--ink:#efe6e1;--muted:#8f7d78;--red:#b3122b;--red2:#e0263f;--gold:#c9a45c;--gold2:#e8cf92;--ok:#6fae8a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  background:radial-gradient(120% 70% at 50% 0%,#2a0d14 0%,#120809 45%,#080505 100%) fixed}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.07;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+button{font:inherit;color:inherit;border:none;background:none;cursor:pointer}
+#app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:16px 16px 34px}
+.display{font-family:Cinzel,Georgia,serif;letter-spacing:.06em}
+h1{font-family:Cinzel,Georgia,serif;font-weight:800;font-size:34px;margin:6px 0 4px;letter-spacing:.08em;text-align:center;
+   background:linear-gradient(180deg,#f4e3c0,#c9a45c 55%,#8a6a2e);-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-family:Cinzel,Georgia,serif;font-weight:800;font-size:21px;margin:8px 0 14px;letter-spacing:.06em;color:var(--gold2)}
+.sub{color:var(--muted);font-size:14px;margin:0 auto 20px;text-align:center;max-width:320px;line-height:1.45}
+.sigil{display:block;margin:18px auto 4px;width:92px;height:92px;filter:drop-shadow(0 0 22px #b3122b66)}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px;border-radius:12px;font-weight:800;font-size:15px;letter-spacing:.04em;margin-bottom:10px;
+  background:linear-gradient(180deg,#d01f38,#8e0d20);box-shadow:0 1px 0 #ff5a6f55 inset,0 8px 24px -10px #e0263f99;text-transform:uppercase}
+.btn:active{transform:translateY(1px);filter:brightness(.95)}
+.btn.ghost{background:linear-gradient(180deg,#1d1417,#140d0f);border:1px solid var(--line);box-shadow:0 1px 0 #ffffff0d inset;text-transform:none;letter-spacing:.01em;font-weight:600}
+.btn:disabled{opacity:.4;pointer-events:none}
+.btn svg{width:18px;height:18px}
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 10px 30px -18px #000}
+input,select{font:inherit;color:var(--ink);background:#0d0809;border:1px solid var(--line);border-radius:10px;padding:12px;width:100%;margin:6px 0 12px;outline:none}
+input:focus,select:focus{border-color:var(--gold)}
+label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1}
+.rules{margin:10px 0 0;padding:0;list-style:none}
+.rules li{display:flex;gap:10px;margin-bottom:10px;font-size:14px;color:#d8cbc6;line-height:1.4}
+.rules li i{flex:0 0 22px;height:22px;color:var(--gold)}
+.rules svg{width:22px;height:22px}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.top .display{font-size:14px;color:var(--gold2)}
+.players{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+.pl{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:12px;padding:8px;display:flex;gap:8px;align-items:center;position:relative;min-width:0;transition:border-color .3s,box-shadow .3s}
+.av{flex:0 0 30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Cinzel,Georgia,serif;font-weight:800;font-size:13px;color:#0b0708;background:linear-gradient(160deg,var(--gold2),#8a6a2e)}
+.pl.bot .av{background:linear-gradient(160deg,#5a2a33,#2a1216);color:var(--gold2)}
+.pl .tx{min-width:0;font-size:12px}
+.pl b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.pl.turn{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 24px -6px #c9a45c88}
+.pl.dead{opacity:.35}
+.pl.dead b{text-decoration:line-through}
+.pl .me{position:absolute;top:-7px;right:6px;background:var(--gold);color:#0b0708;font-size:9px;font-weight:800;border-radius:5px;padding:1px 5px;letter-spacing:.08em}
+.coin{display:inline-flex;align-items:center;gap:4px;color:var(--gold2);font-weight:600}
+.coin:before{content:"";width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f6e2ad,#c9a45c 55%,#7c5e25);box-shadow:0 0 0 1px #00000055}
+.stage{position:relative;margin:8px auto 0;width:300px;height:300px}
+.stage svg{width:100%;height:100%;overflow:visible}
+#rot{transition:transform .6s cubic-bezier(.25,1.3,.45,1);transform-origin:150px 150px}
+.stage.shake{animation:sh .5s}
+@keyframes sh{15%{transform:translate(-9px,3px) rotate(-2deg)}35%{transform:translate(8px,-3px) rotate(2deg)}55%{transform:translate(-5px,2px)}75%{transform:translate(4px,-1px)}}
+.legend{display:flex;justify-content:center;gap:14px;font-size:11px;color:var(--muted);margin:2px 0 4px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.status{text-align:center;font-size:15px;min-height:46px;margin:12px 0 10px;line-height:1.4}
+.status b{color:var(--gold2);font-weight:800}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.act{display:flex;gap:10px;align-items:center;background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:12px;padding:11px;text-align:left;font-size:13px;font-weight:700;transition:border-color .2s}
+.act:not(:disabled):active{border-color:var(--gold)}
+.act svg{flex:0 0 22px;width:22px;height:22px;color:var(--gold)}
+.act .tx{flex:1;min-width:0}
+.act small{display:block;font-weight:400;color:var(--muted);font-size:11px;margin-top:2px}
+.act .coin{font-size:12px}
+.act:disabled{opacity:.32}
+.shoot{width:100%;padding:18px;border-radius:14px;margin-bottom:12px;font-family:Cinzel,Georgia,serif;font-weight:800;font-size:17px;letter-spacing:.14em;text-transform:uppercase;
+  background:radial-gradient(120% 140% at 50% 0%,#e0263f,#7d0a1b 70%);box-shadow:0 0 0 1px #ff4b6244 inset,0 10px 34px -10px #e0263fcc;animation:pulse 2.2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 1px #ff4b6266 inset,0 10px 44px -6px #e0263f}}
+.shoot:disabled{opacity:.3;animation:none}
+.log{font-size:13px;color:#c9b8b2;max-height:190px;overflow:auto;margin-top:6px}
+.log div{padding:6px 0;border-bottom:1px solid #24171b}
+.log div:first-child{color:var(--ink)}
+.quote{font-family:Cinzel,Georgia,serif;color:var(--gold2);font-size:13px;letter-spacing:.04em}
+.pick{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:10px 0}
+.pick button{padding:10px 0;border-radius:10px;background:#0d0809;border:1px solid var(--line);font-weight:700;font-size:12px}
+.pick button:active{border-color:var(--gold)}
+.ov{position:fixed;inset:0;background:radial-gradient(circle,#1a0a0eee,#050303f5);display:flex;align-items:center;justify-content:center;z-index:20;padding:20px}
+.ov .box{max-width:360px;width:100%;text-align:center}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#0d0809f2;border:1px solid var(--gold);color:var(--gold2);padding:11px 16px;border-radius:12px;font-size:14px;z-index:30;max-width:90vw;text-align:center;box-shadow:0 10px 30px #000a}
+.redflash{position:fixed;inset:0;pointer-events:none;z-index:25;background:radial-gradient(circle,#ff2a4499,#5a000fdd);animation:rf .7s forwards}
+@keyframes rf{0%{opacity:1}100%{opacity:0}}
+.code{font-family:Cinzel,Georgia,serif;font-size:38px;font-weight:800;letter-spacing:10px;text-align:center;color:var(--gold2);margin:6px 0}
+.muted{color:var(--muted);font-size:13px}
+.tag{display:inline-block;font-size:9px;background:#2a1a1f;border-radius:5px;padding:1px 5px;margin-left:4px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;vertical-align:middle}
+.win{font-family:Cinzel,Georgia,serif;font-size:22px;color:var(--gold2)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ================== regras ================== */
+const N = 6;                                   // câmaras do tambor
+const COST = {peekPub:1, peekSec:3, "s1":2, "s2":3, "s-1":4, "s-2":5};
+const DEF = {coins:5, reward:1};               // moedas iniciais e prêmio por sobreviver ao gatilho
+const BOTNAMES = ["Belzebu","Lilith","Mefisto","Azazel","Baal","Astaroth"];
+const DEVIL = ["O tambor gira... quem tem coragem?","Hehehe. A sorte é minha convidada.","Cada moeda compra um segredo.","Confie no seu instinto... ou não.","O próximo clique pode ser o último."];
+const rnd = n => Math.random()*n|0;
+const mod = x => ((x%N)+N)%N;
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function newGame(list, cfg){
+  const s = Object.assign({}, DEF, cfg||{});
+  const G = {players:list.map(p=>({id:p.id, name:p.name, bot:!!p.bot, alive:true, coins:s.coins, know:{}})),
+             cfg:s, turn:rnd(list.length), pos:rnd(N), bullet:rnd(N), pub:{}, round:1, log:[], over:false, winner:null, seq:0, fx:null};
+  log(G, `Rodada 1. Uma bala no tambor. ${G.players[G.turn].name} começa.`);
+  return G;
+}
+function log(G, t){ G.log.unshift(t); G.log = G.log.slice(0,40); }
+function costOf(a){ return a.t==="spin" ? COST["s"+a.n] : COST[a.t]; }
+/* aplica uma ação do jogador i. Retorna {ok, err, priv} — priv é o que só ele vê */
+function act(G, i, a){
+  const p = G.players[i];
+  if (G.over) return {err:"A partida acabou"};
+  if (i !== G.turn) return {err:"Não é a sua vez"};
+  if (a.t === "shoot") return shoot(G, i);
+  const c = costOf(a);
+  if (c == null) return {err:"Ação inválida"};
+  if (p.coins < c) return {err:"Moedas insuficientes"};
+  p.coins -= c; G.seq++;
+  if (a.t === "peekPub"){
+    const has = G.pos === G.bullet; G.pub[G.pos] = has?"B":"V";
+    log(G, `${p.name} espiou a câmara atual para todos: ${has?"TEM BALA!":"vazia."}`);
+    G.fx = {k:"peek"}; return {ok:1};
+  }
+  if (a.t === "peekSec"){
+    const off = mod(a.c|0), ch = mod(G.pos+off), has = ch === G.bullet; p.know[ch] = has?"B":"V";
+    log(G, `${p.name} espiou uma câmara em segredo.`);
+    G.fx = {k:"peek"};
+    return {ok:1, priv:`Câmara ${off===0?"atual":"+"+off}: ${has?"TEM BALA":"vazia"}`};
+  }
+  if (a.t === "spin"){
+    G.pos = mod(G.pos + a.n);
+    log(G, `${p.name} girou o tambor ${Math.abs(a.n)} casa${Math.abs(a.n)>1?"s":""} para ${a.n>0?"frente":"trás"}.`);
+    G.fx = {k:"spin", n:a.n}; return {ok:1};
+  }
+}
+function shoot(G, i){
+  const p = G.players[i]; G.seq++;
+  if (G.pos === G.bullet){
+    p.alive = false;
+    log(G, `BANG! ${p.name} está fora.`); G.fx = {k:"bang", who:i};
+    const alive = G.players.filter(x=>x.alive);
+    if (alive.length === 1){ G.over = true; G.winner = G.players.indexOf(alive[0]); log(G, `${alive[0].name} venceu o Diabo!`); return {ok:1}; }
+    G.round++; G.bullet = rnd(N); G.pos = rnd(N); G.pub = {}; G.players.forEach(x=>x.know={});
+    log(G, `Rodada ${G.round}. O tambor foi recarregado e girado.`);
+  } else {
+    G.pub[G.pos] = "V"; p.coins += G.cfg.reward; G.pos = mod(G.pos+1);
+    log(G, `Clique... ${p.name} sobreviveu (+${G.cfg.reward} moeda${G.cfg.reward>1?"s":""}).`); G.fx = {k:"click", who:i};
+    /* quando todo mundo já sabe onde está a bala, o Diabo recarrega o tambor */
+    const pv=Object.values(G.pub); if (pv.includes("B") || pv.filter(x=>x==="V").length>=N-1){
+      G.bullet=rnd(N); G.pos=rnd(N); G.pub={}; G.players.forEach(x=>x.know={}); G.fx={k:"reload"};
+      log(G, `O Diabo recarregou o tambor: ninguém sabe mais onde está a bala.`); }
+  }
+  nextTurn(G); return {ok:1};
+}
+function nextTurn(G){ do { G.turn = (G.turn+1) % G.players.length; } while(!G.players[G.turn].alive); }
+/* o que o jogador i pode ver (sem a posição da bala) */
+function viewFor(G, i){
+  return {players:G.players.map(p=>({name:p.name, bot:p.bot, alive:p.alive, coins:p.coins})), me:i, turn:G.turn, pos:G.pos,
+          pub:G.pub, know:i>=0 && G.players[i] ? G.players[i].know : {}, round:G.round, log:G.log, over:G.over, winner:G.winner, seq:G.seq, fx:G.fx, cfg:G.cfg};
+}
+/* bot: decide uma ação por vez */
+function botAction(G, i){
+  const p = G.players[i], k = Object.assign({}, G.pub, p.know), cur = k[G.pos];
+  if (cur === "B"){
+    for (const n of [1,2,-1,-2]) if (p.coins >= COST["s"+n] && k[mod(G.pos+n)] !== "B") return {t:"spin", n};
+    return {t:"shoot"};
+  }
+  if (cur === "V") return {t:"shoot"};
+  const unknown = [...Array(N).keys()].filter(c=>k[c]!=="V").length, risk = 1/Math.max(unknown,1);
+  if (risk >= .3 && p.coins >= 3 && Math.random() < .55) return {t:"peekSec", c:0};
+  if (risk >= .2 && p.coins >= 1 && Math.random() < .5) return {t:"peekPub"};
+  if (risk >= .45 && p.coins >= 2) return {t:"spin", n:1};
+  return {t:"shoot"};
+}
+
+/* ================== ícones e desenho ================== */
+const IC = {
+  eye:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  secret:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10c2-1 4-1.5 9-1.5s7 .5 9 1.5"/><path d="M5 10l1.5 5.5a2 2 0 0 0 3.6.5L12 13l1.9 3a2 2 0 0 0 3.6-.5L19 10"/><path d="M8 8.5 9.5 4h5L16 8.5"/></svg>`,
+  f1:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/></svg>`,
+  f2:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4.5h-4.5"/><path d="M11 10.5l2 1.5-2 1.5M14 10.5l2 1.5-2 1.5"/></svg>`,
+  b1:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4.5h4.5"/></svg>`,
+  b2:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4.5h4.5"/><path d="M13 10.5l-2 1.5 2 1.5M10 10.5l-2 1.5 2 1.5"/></svg>`,
+  skull:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a8 8 0 0 0-5 14.2V20h10v-2.8A8 8 0 0 0 12 3z"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><path d="M10.5 20v-2M13.5 20v-2"/></svg>`,
+  coin:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/></svg>`,
+  cyl:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="6.5" r="2"/><circle cx="16.8" cy="9.3" r="2"/><circle cx="16.8" cy="14.7" r="2"/><circle cx="12" cy="17.5" r="2"/><circle cx="7.2" cy="14.7" r="2"/><circle cx="7.2" cy="9.3" r="2"/></svg>`,
+  crown:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 10H5z"/></svg>`,
+  users:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>`,
+  globe:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>`,
+  phone:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>`
+};
+const SIGIL = `<svg class="sigil" viewBox="0 0 100 100"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4e3c0"/><stop offset=".55" stop-color="#c9a45c"/><stop offset="1" stop-color="#7c5e25"/></linearGradient></defs>
+  <path d="M27 30C20 20 19 9 23 3c3 10 9 16 17 19M73 30c7-10 8-21 4-27-3 10-9 16-17 19" fill="url(#sg)"/>
+  <circle cx="50" cy="56" r="34" fill="none" stroke="url(#sg)" stroke-width="2.5"/><circle cx="50" cy="56" r="27" fill="none" stroke="url(#sg)" stroke-width="1" opacity=".6"/>
+  ${[0,1,2,3,4,5].map(i=>{const a=i*Math.PI/3-Math.PI/2,x=50+18*Math.cos(a),y=56+18*Math.sin(a);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.2" fill="${i===0?"#b3122b":"none"}" stroke="url(#sg)" stroke-width="1.6"/>`;}).join("")}
+  <circle cx="50" cy="56" r="3.5" fill="url(#sg)"/></svg>`;
+const coin = n => `<span class="coin">${n}</span>`;
+/* tambor do revólver em SVG: off 0 fica em cima (câmara que dispara) */
+function cylinderSVG(v, k, rotFrom){
+  const C=150, R=70;
+  const ch=[...Array(N).keys()].map(off=>{ const c=(v.pos+off)%N, a=off/N*2*Math.PI-Math.PI/2, x=C+R*Math.cos(a), y=C+R*Math.sin(a), st=k[c], sec=v.know[c]&&!v.pub[c];
+    let inner = `<circle cx="${x}" cy="${y}" r="21" fill="url(#hole)"/>`;
+    if (st==="B") inner += `<circle cx="${x}" cy="${y}" r="18" fill="url(#brass)" stroke="#5b4219" stroke-width="1"/><circle cx="${x}" cy="${y}" r="12.5" fill="none" stroke="#7c5e25" stroke-width="1"/><circle cx="${x}" cy="${y}" r="6.5" fill="url(#primer)"/>`;
+    else if (st==="V") inner += `<circle cx="${x}" cy="${y}" r="15" fill="none" stroke="#6fae8a" stroke-width="1.2" opacity=".55"/>`;
+    else inner += `<text x="${x}" y="${y+5}" text-anchor="middle" font-size="14" font-family="Cinzel,Georgia,serif" fill="#5d4b47">?</text>`;
+    const ring = sec ? `<circle cx="${x}" cy="${y}" r="29" fill="none" stroke="#e8cf92" stroke-width="1.6" stroke-dasharray="4 4"/>` : "";
+    return `<circle cx="${x}" cy="${y}" r="25" fill="url(#rim)"/>${inner}${ring}`; }).join("");
+  const flutes=[...Array(N).keys()].map(i=>{ const a=(i+.5)/N*360-90; return `<ellipse cx="${C+101*Math.cos(a*Math.PI/180)}" cy="${C+101*Math.sin(a*Math.PI/180)}" rx="7" ry="15" transform="rotate(${a} ${C+101*Math.cos(a*Math.PI/180)} ${C+101*Math.sin(a*Math.PI/180)})" fill="url(#flute)"/>`; }).join("");
+  const labels=[...Array(N).keys()].map(off=>{ const a=off/N*2*Math.PI-Math.PI/2, x=C+138*Math.cos(a), y=C+138*Math.sin(a)+4; return off?`<text x="${x}" y="${y}" text-anchor="middle" font-size="11" fill="#8f7d78" font-family="Inter,system-ui">+${off}</text>`:""; }).join("");
+  return `<svg viewBox="0 0 300 300"><defs>
+    <radialGradient id="steel" cx="40%" cy="32%" r="75%"><stop offset="0" stop-color="#a7abb3"/><stop offset=".35" stop-color="#5d6168"/><stop offset=".75" stop-color="#2b2d32"/><stop offset="1" stop-color="#15161a"/></radialGradient>
+    <radialGradient id="rim" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#9a9ea6"/><stop offset="1" stop-color="#2a2c31"/></radialGradient>
+    <radialGradient id="hole" cx="50%" cy="55%" r="60%"><stop offset="0" stop-color="#000"/><stop offset=".8" stop-color="#0b0b0d"/><stop offset="1" stop-color="#25262b"/></radialGradient>
+    <radialGradient id="brass" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#fbe9b8"/><stop offset=".45" stop-color="#cfa452"/><stop offset="1" stop-color="#6e4f1c"/></radialGradient>
+    <radialGradient id="primer" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#e9e9ea"/><stop offset="1" stop-color="#7d7f85"/></radialGradient>
+    <linearGradient id="flute" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#121316"/><stop offset=".5" stop-color="#3a3d43"/><stop offset="1" stop-color="#121316"/></linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#b3122b" stop-opacity=".35"/><stop offset="1" stop-color="#b3122b" stop-opacity="0"/></radialGradient>
+    <filter id="ds" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity=".7"/></filter></defs>
+    <circle cx="150" cy="150" r="150" fill="url(#glow)"/>
+    <g id="rot" style="transform:rotate(${rotFrom||0}deg)"><g filter="url(#ds)"><circle cx="150" cy="150" r="120" fill="url(#steel)" stroke="#0e0f11" stroke-width="2"/></g>
+      <circle cx="150" cy="150" r="116" fill="none" stroke="#ffffff22" stroke-width="1"/>${flutes}${ch}
+      <circle cx="150" cy="150" r="17" fill="url(#rim)" stroke="#111" stroke-width="1"/><circle cx="150" cy="150" r="6" fill="#16171a"/></g>
+    ${labels}
+    <path d="M150 6l-11-14h22z" transform="translate(0 20)" fill="#e0263f" stroke="#ff8c9a" stroke-width=".8"/>
+    <text x="150" y="-6" text-anchor="middle" font-size="10" letter-spacing="2" fill="#e0263f" font-family="Inter,system-ui" font-weight="800">DISPARA</text></svg>`;
+}
+
+/* ================== estado da tela ================== */
+const app = document.getElementById("app");
+let MODE = null;          // "bots" | "local" | "host" | "guest"
+let G = null, V = null;   // G: jogo completo (quem roda o jogo) · V: o que eu vejo
+let ME = 0, lastSeq = -1, botTimer = null, revealed = true, pickSec = false;
+let net = {peer:null, conns:{}, host:null, code:null, lobby:[], name:""};
+const PEER_OPTS = (()=>{ const q=new URLSearchParams(location.search); return q.get("peerhost")?{host:q.get("peerhost"), port:+q.get("peerport")||9000, path:"/", secure:false}:{}; })();
+const store = { get(k,d){ try{ return JSON.parse(localStorage.getItem("rd-"+k)) ?? d; }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("rd-"+k, JSON.stringify(v)); }catch(e){} } };
+
+function toast(t){ const d=document.createElement("div"); d.className="toast"; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(), 2600); }
+let actx; function tone(fs, type="sine", len=.18){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+  fs.forEach((f,i)=>{ const o=actx.createOscillator(), g=actx.createGain(); o.type=type; o.frequency.value=f; const t=actx.currentTime+i*.08;
+  g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.18,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+len); o.connect(g).connect(actx.destination); o.start(t); o.stop(t+len+.02); }); }catch(e){} }
+const sfx = {click:()=>tone([180],"square",.06), bang:()=>tone([90,60,40],"sawtooth",.4), spin:()=>tone([300,340,380,420],"triangle",.05), peek:()=>tone([700,900])};
+
+/* ================== telas ================== */
+function home(){
+  stopAll(); MODE=null;
+  const roomHash = (location.hash.match(/^#sala-([A-Z0-9]{4})$/)||[])[1];
+  app.innerHTML = `${SIGIL}<h1>Roleta do Diabo</h1>
+    <div class="sub">Seis câmaras. Uma bala. Moedas para espiar e manipular o tambor. De 3 a 6 jogadores.</div>
+    ${roomHash?`<button class="btn" id="joinHash">${IC.globe} Entrar na sala ${roomHash}</button>`:""}
+    <button class="btn" id="bots">${IC.cyl} Desafiar o Diabo</button>
+    <button class="btn ghost" id="local">${IC.phone} Passa e joga · mesmo celular</button>
+    <button class="btn ghost" id="host">${IC.users} Criar sala online</button>
+    <button class="btn ghost" id="join">${IC.globe} Entrar em sala online</button>
+    <div class="card"><h2 style="font-size:16px;margin:0">Regras</h2><ul class="rules">
+      <li><i>${IC.cyl}</i><span>${N} câmaras e 1 bala. Na sua vez, compre ações e depois <b>puxe o gatilho</b>.</span></li>
+      <li><i>${IC.coin}</i><span>Todos começam com ${DEF.coins} moedas. Sobreviveu: +${DEF.reward} e o tambor anda 1 casa.</span></li>
+      <li><i>${IC.eye}</i><span><b>Espiar público</b> · ${COST.peekPub} — todos veem se a câmara atual tem bala.</span></li>
+      <li><i>${IC.secret}</i><span><b>Espiar secreto</b> · ${COST.peekSec} — você escolhe a câmara e só você vê.</span></li>
+      <li><i>${IC.f1}</i><span><b>Girar</b> 1 casa · ${COST.s1} &nbsp;|&nbsp; 2 casas · ${COST.s2}</span></li>
+      <li><i>${IC.b1}</i><span><b>Voltar</b> 1 casa · ${COST["s-1"]} &nbsp;|&nbsp; 2 casas · ${COST["s-2"]}</span></li>
+      <li><i>${IC.secret}</i><span>Quando todos já sabem onde está a bala, o Diabo recarrega o tambor.</span></li>
+      <li><i>${IC.skull}</i><span>Quem leva o tiro sai, o tambor é recarregado. O último vivo vence.</span></li></ul></div>`;
+  const j=document.getElementById("joinHash"); if(j) j.onclick=()=>joinScreen(roomHash);
+  document.getElementById("bots").onclick=botsSetup;
+  document.getElementById("local").onclick=localSetup;
+  document.getElementById("host").onclick=hostSetup;
+  document.getElementById("join").onclick=()=>joinScreen("");
+}
+function nameField(){ return `<label>Seu nome</label><input id="nm" maxlength="14" value="${esc(store.get("name",""))}" placeholder="Ex.: Felipe">`; }
+function readName(){ const v=(document.getElementById("nm").value||"").trim().slice(0,14); if(!v){ toast("Digite seu nome"); return null; } store.set("name",v); return v; }
+function back(){ return `<button class="btn ghost" id="back">Voltar</button>`; }
+function bindBack(){ document.getElementById("back").onclick=()=>{ history.replaceState(null,"",location.pathname+location.search); home(); }; }
+
+function botsSetup(){
+  app.innerHTML = `<h2>Desafiar o Diabo</h2><div class="card">${nameField()}
+    <label>Quantos adversários</label><select id="n">${[2,3,4,5].map(n=>`<option ${n===3?"selected":""}>${n}</option>`).join("")}</select></div>
+    <button class="btn" id="go">Começar</button>${back()}`;
+  bindBack();
+  document.getElementById("go").onclick=()=>{ const nm=readName(); if(!nm) return; const n=+document.getElementById("n").value;
+    const list=[{id:"me", name:nm}].concat(BOTNAMES.slice(0,n).map((b,i)=>({id:"b"+i, name:b, bot:true})));
+    MODE="bots"; ME=0; G=newGame(list); lastSeq=-1; refresh(); };
+}
+function localSetup(){
+  app.innerHTML = `<h2>Passa e joga</h2><div class="card"><div class="muted">De 3 a 6 jogadores no mesmo celular. Antes de cada vez, o celular é passado para o próximo (o espiar secreto fica escondido dos outros).</div>
+    <div id="names">${[0,1,2].map(i=>`<input class="pn" maxlength="14" placeholder="Jogador ${i+1}">`).join("")}</div>
+    <div class="row"><button class="btn ghost" id="add">+ Jogador</button><button class="btn ghost" id="rem">− Jogador</button></div></div>
+    <button class="btn" id="go">Começar</button>${back()}`;
+  bindBack();
+  const box=document.getElementById("names");
+  document.getElementById("add").onclick=()=>{ const n=box.children.length; if(n<6) box.insertAdjacentHTML("beforeend",`<input class="pn" maxlength="14" placeholder="Jogador ${n+1}">`); };
+  document.getElementById("rem").onclick=()=>{ if(box.children.length>3) box.lastElementChild.remove(); };
+  document.getElementById("go").onclick=()=>{ const list=[...document.querySelectorAll(".pn")].map((x,i)=>({id:"p"+i, name:x.value.trim()||`Jogador ${i+1}`}));
+    MODE="local"; G=newGame(list); ME=G.turn; revealed=false; lastSeq=-1; refresh(); };
+}
+
+/* ================== online (sala com código) ================== */
+function loadPeer(){ return new Promise((ok,no)=>{ if(window.Peer) return ok();
+  const s=document.createElement("script"); s.src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"; s.onload=ok; s.onerror=()=>no(new Error("sem internet")); document.head.appendChild(s); }); }
+const genCode = ()=>[...Array(4)].map(()=>"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[rnd(32)]).join("");
+function hostSetup(){
+  app.innerHTML = `<h2>Criar sala</h2><div class="card">${nameField()}</div><button class="btn" id="go">Criar sala</button>${back()}`;
+  bindBack();
+  document.getElementById("go").onclick=async()=>{ const nm=readName(); if(!nm) return; net.name=nm;
+    app.querySelector("#go").disabled=true;
+    try{ await loadPeer(); }catch(e){ toast("Sem internet: o modo online precisa de conexão"); app.querySelector("#go").disabled=false; return; }
+    openHost(nm, 0); };
+}
+function openHost(nm, tries){
+  const code=genCode(); const peer=new Peer("rdiabo-"+code, PEER_OPTS);
+  peer.on("open",()=>{ MODE="host"; net.peer=peer; net.code=code; net.lobby=[{id:"host", name:nm}]; history.replaceState(null,"",location.pathname+location.search+"#sala-"+code); lobby(); });
+  peer.on("error",e=>{ if(e.type==="unavailable-id" && tries<5){ peer.destroy(); openHost(nm, tries+1); } else if(MODE!=="host"||!G) toast("Erro de conexão: "+e.type); });
+  peer.on("connection",c=>{
+    c.on("data",m=>hostMsg(c,m));
+    c.on("close",()=>hostLeft(c.peer));
+  });
+}
+function hostMsg(c, m){
+  if (m.k==="join"){
+    if (G){ // já começou: só volta quem já estava na partida
+      const i=G.players.findIndex(p=>p.id===m.pid);
+      if (i<0){ c.send({k:"err", msg:"A partida já começou"}); return; }
+      G.players[i].bot=false; net.conns[m.pid]=c; c.pid=m.pid; log(G,`${G.players[i].name} voltou.`); broadcast(); return;
+    }
+    if (net.lobby.length>=6){ c.send({k:"err", msg:"Sala cheia (6 jogadores)"}); return; }
+    const name=String(m.name||"Jogador").slice(0,14); c.pid=m.pid||c.peer; net.conns[c.pid]=c;
+    if(!net.lobby.some(p=>p.id===c.pid)) net.lobby.push({id:c.pid, name}); lobby(); sendLobby(); return;
+  }
+  if (m.k==="act" && G){ const i=G.players.findIndex(p=>p.id===c.pid); if(i<0) return;
+    const r=act(G,i,m.a); if(r.err){ c.send({k:"priv", msg:r.err}); return; } if(r.priv) c.send({k:"priv", msg:r.priv}); broadcast(); }
+}
+function hostLeft(id){
+  const pid=Object.keys(net.conns).find(k=>net.conns[k].peer===id) || id; delete net.conns[pid];
+  if (!G){ net.lobby=net.lobby.filter(p=>p.id!==pid); lobby(); sendLobby(); return; }
+  const p=G.players.find(x=>x.id===pid); if(p && p.alive && !p.bot){ p.bot=true; log(G,`${p.name} saiu. Um bot joga no lugar.`); broadcast(); }
+}
+function sendLobby(){ Object.values(net.conns).forEach(c=>{ try{ c.send({k:"lobby", players:net.lobby, code:net.code}); }catch(e){} }); }
+function broadcast(){ Object.values(net.conns).forEach(c=>{ const i=G.players.findIndex(p=>p.id===c.pid); try{ c.send({k:"state", v:viewFor(G,i)}); }catch(e){} }); refresh(); }
+function lobby(){
+  const host = MODE==="host", list=host?net.lobby:net.lobby, link=location.origin+location.pathname+location.search+"#sala-"+net.code;
+  app.innerHTML = `<h2>Sala</h2><div class="card" style="text-align:center"><div class="muted">Código da sala</div><div class="code">${net.code}</div>
+      <div class="muted" style="word-break:break-all">${esc(link)}</div>
+      <button class="btn ghost" id="copy" style="margin-top:10px">Copiar link</button></div>
+    <div class="card"><b>Jogadores (${list.length}/6)</b><div style="margin-top:8px">${list.map((p,i)=>`<div style="padding:6px 0"><span style="display:inline-flex;width:18px;vertical-align:middle;color:var(--gold)">${i===0?IC.crown:""}</span> ${esc(p.name)}${p.bot?'<span class="tag">bot</span>':""}</div>`).join("")}</div>
+      ${host?`<button class="btn ghost" id="addbot" ${list.length>=6?"disabled":""}>+ Bot</button>`:""}</div>
+    ${host?`<button class="btn" id="start" ${list.length<3?"disabled":""}>${list.length<3?`Precisa de ${3-list.length} jogador(es)`:"Começar partida"}</button>`:`<div class="status">Esperando o dono da sala começar...</div>`}
+    <button class="btn ghost" id="leave">Sair</button>`;
+  document.getElementById("copy").onclick=()=>{ try{ navigator.clipboard.writeText(link).then(()=>toast("Link copiado"),()=>toast(link)); }catch(e){ toast(link); } };
+  document.getElementById("leave").onclick=()=>{ history.replaceState(null,"",location.pathname+location.search); home(); };
+  if (host){
+    document.getElementById("addbot").onclick=()=>{ const used=net.lobby.map(p=>p.name); const nm=BOTNAMES.find(b=>!used.includes(b))||"Bot";
+      net.lobby.push({id:"bot"+Date.now(), name:nm, bot:true}); lobby(); sendLobby(); };
+    document.getElementById("start").onclick=()=>{ G=newGame(net.lobby); ME=0; lastSeq=-1; broadcast(); };
+  }
+}
+function joinScreen(code){
+  app.innerHTML = `<h2>Entrar em sala</h2><div class="card">${nameField()}<label>Código da sala</label><input id="cd" maxlength="4" value="${esc(code)}" style="text-transform:uppercase;letter-spacing:4px;font-weight:800"></div>
+    <button class="btn" id="go">Entrar</button>${back()}`;
+  bindBack();
+  document.getElementById("go").onclick=async()=>{ const nm=readName(); if(!nm) return; const cd=document.getElementById("cd").value.trim().toUpperCase();
+    if(!/^[A-Z0-9]{4}$/.test(cd)){ toast("Código tem 4 letras/números"); return; }
+    app.querySelector("#go").disabled=true;
+    try{ await loadPeer(); }catch(e){ toast("Sem internet: o modo online precisa de conexão"); app.querySelector("#go").disabled=false; return; }
+    connectGuest(nm, cd); };
+}
+function connectGuest(nm, cd){
+  const pid=store.get("pid", null) || ("g"+Date.now().toString(36)+rnd(1e6)); store.set("pid", pid);
+  const peer=new Peer(PEER_OPTS); net.peer=peer; net.code=cd; net.name=nm;
+  peer.on("open",()=>{ const c=peer.connect("rdiabo-"+cd,{reliable:true}); net.host=c;
+    c.on("open",()=>{ MODE="guest"; history.replaceState(null,"",location.pathname+location.search+"#sala-"+cd); c.send({k:"join", name:nm, pid}); });
+    c.on("data",guestMsg);
+    c.on("close",()=>{ if(MODE==="guest"){ toast("A conexão com a sala caiu"); home(); } });
+  });
+  peer.on("error",e=>{ toast(e.type==="peer-unavailable"?"Sala não encontrada":"Erro de conexão: "+e.type); if(MODE!=="guest") joinScreen(cd); });
+}
+function guestMsg(m){
+  if (m.k==="lobby"){ net.lobby=m.players; net.code=m.code; lobby(); }
+  else if (m.k==="state"){ V=m.v; ME=V.me; draw(); }
+  else if (m.k==="priv"){ secretToast(m.msg); }
+  else if (m.k==="err"){ toast(m.msg); home(); }
+}
+function stopAll(){ clearTimeout(botTimer); if(net.peer){ try{ net.peer.destroy(); }catch(e){} } net={peer:null, conns:{}, host:null, code:null, lobby:[], name:""}; G=null; V=null; }
+
+/* ================== partida ================== */
+function send(a){
+  if (MODE==="guest"){ net.host.send({k:"act", a}); return; }
+  const r=act(G, G.turn, a); if(r.err){ toast(r.err); return; }
+  if (r.priv) secretToast(r.priv);
+  if (MODE==="host") broadcast(); else refresh();
+}
+function secretToast(t){ toast("Só você vê · "+t); }
+function refresh(){                                   // quem roda o jogo: monta a visão e anda com os bots
+  if (!G) return;
+  if (MODE==="local"){ if(G.players[G.turn].id!==G.players[ME].id && !G.over){ ME=G.turn; revealed=false; } }
+  V = viewFor(G, ME); draw();
+  clearTimeout(botTimer);
+  if (!G.over && G.players[G.turn].bot) botTimer=setTimeout(()=>{ const i=G.turn; if(!G||G.over||!G.players[i].bot) return;
+    const r=act(G, i, botAction(G, i)); if(r.err) act(G, i, {t:"shoot"}); MODE==="host"?broadcast():refresh(); }, 850);
+}
+function draw(){
+  const v=V; if(!v) return;
+  if (MODE==="local" && !revealed && !v.over){
+    app.innerHTML=`<div class="ov"><div class="box">${SIGIL}<div class="muted" style="text-transform:uppercase;letter-spacing:.14em">Passe o celular para</div><h1 style="font-size:30px">${esc(v.players[v.turn].name)}</h1><div class="sub">Os outros não devem olhar a tela.</div><button class="btn" id="rv">Sou ${esc(v.players[v.turn].name)}</button></div></div>`;
+    document.getElementById("rv").onclick=()=>{ revealed=true; draw(); }; return;
+  }
+  const mine = v.turn===v.me && !v.over && v.players[v.me] && v.players[v.me].alive, me=v.players[v.me];
+  const k=Object.assign({}, v.pub, v.know);
+  const fresh = v.seq!==lastSeq && lastSeq!==-1, fx=fresh?v.fx:null; lastSeq=v.seq;
+  const rotFrom = fx ? (fx.k==="spin"?fx.n*60 : fx.k==="click"?60 : fx.k==="bang"||fx.k==="reload"?-720:0) : 0;
+  const can = t => mine && me.coins >= COST[t];
+  const turnName = v.players[v.turn].name;
+  const A = (key, icon, title, sub) => `<button class="act" data-a="${key}" ${can(key)?"":"disabled"}>${icon}<span class="tx">${title}<small>${sub}</small></span>${coin(COST[key])}</button>`;
+  app.innerHTML = `
+    <div class="top"><span class="display">Rodada ${v.round}</span>${MODE==="host"||MODE==="guest"?`<span class="muted">Sala <b style="color:var(--gold2);letter-spacing:.12em">${net.code}</b></span>`:`<span class="muted">${MODE==="local"?"Passa e joga":"Contra o Diabo"}</span>`}</div>
+    <div class="players">${v.players.map((p,i)=>`<div class="pl ${i===v.turn&&!v.over?"turn":""} ${p.alive?"":"dead"} ${p.bot?"bot":""}">${i===v.me&&MODE!=="local"?'<span class="me">VOCÊ</span>':""}<span class="av">${esc(p.name[0].toUpperCase())}</span><span class="tx"><b>${esc(p.name)}</b>${p.alive?coin(p.coins):'<span class="muted" style="font-size:11px">fora</span>'}</span></div>`).join("")}</div>
+    <div class="stage" id="stage">${cylinderSVG(v, k, rotFrom)}</div>
+    <div class="legend"><span><i style="background:radial-gradient(circle at 35% 35%,#fbe9b8,#cfa452,#6e4f1c)"></i>bala</span><span><i style="border:1.5px solid #6fae8a"></i>vazia</span><span><i style="border:1.5px dashed #e8cf92"></i>só você sabe</span></div>
+    <div class="status">${v.over?`<div class="win">${esc(v.players[v.winner].name)} venceu</div><span class="muted">O Diabo perdeu esta.</span>`:mine?`Sua vez${MODE==="local"?`, <b>${esc(turnName)}</b>`:""}. Compre ações ou puxe o gatilho.`:me&&!me.alive?`Você está fora. Assistindo...`:`Vez de <b>${esc(turnName)}</b>${v.players[v.turn].bot?" · pensando...":"..."}`}</div>
+    ${v.over?`<button class="btn" id="again">${MODE==="guest"?"Sair":"Jogar de novo"}</button><button class="btn ghost" id="exit">Menu</button>`:`
+    <button class="shoot" id="shoot" ${mine?"":"disabled"}>Puxar o gatilho</button>
+    <div class="acts">
+      ${A("peekPub", IC.eye, "Espiar público", "Todos veem a atual")}
+      ${A("peekSec", IC.secret, "Espiar secreto", "Só você vê")}
+      ${A("s1", IC.f1, "Girar 1", "Avança 1 casa")}
+      ${A("s2", IC.f2, "Girar 2", "Avança 2 casas")}
+      ${A("s-1", IC.b1, "Voltar 1", "Manipulação")}
+      ${A("s-2", IC.b2, "Voltar 2", "Manipulação")}
+    </div>
+    <div id="pick"></div>`}
+    <div class="card"><div class="quote">“${esc(DEVIL[v.round%DEVIL.length])}”</div><div class="log">${v.log.map(t=>`<div>${esc(t)}</div>`).join("")}</div></div>
+    ${v.over?"":`<button class="btn ghost" id="exit">Sair da partida</button>`}`;
+  if (rotFrom){ const r=document.getElementById("rot"); if(fx.k==="bang"||fx.k==="reload") r.style.transition="transform 1.1s cubic-bezier(.2,.9,.3,1)";
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ r.style.transform="rotate(0deg)"; })); }
+  if (fx){ if(fx.k==="bang"){ sfx.bang(); const f=document.createElement("div"); f.className="redflash"; document.body.appendChild(f); setTimeout(()=>f.remove(),800); document.getElementById("stage").classList.add("shake"); }
+    else if(fx.k==="click") sfx.click(); else if(fx.k==="reload") sfx.spin(); else if(fx.k==="spin") sfx.spin(); else if(fx.k==="peek") sfx.peek(); }
+  const ex=document.getElementById("exit"); if(ex) ex.onclick=()=>{ history.replaceState(null,"",location.pathname+location.search); home(); };
+  const ag=document.getElementById("again"); if(ag) ag.onclick=()=>{
+    if (MODE==="guest"){ home(); return; }
+    const list=G.players.map(p=>({id:p.id, name:p.name, bot:p.bot})); G=newGame(list, G.cfg); lastSeq=-1;
+    if (MODE==="bots") ME=0; if (MODE==="local"){ ME=G.turn; revealed=false; } MODE==="host"?broadcast():refresh(); };
+  if (v.over) return;
+  document.getElementById("shoot").onclick=()=>send({t:"shoot"});
+  app.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{ const a=b.dataset.a;
+    if (a==="peekSec"){ document.getElementById("pick").innerHTML=`<div class="card"><b class="display" style="color:var(--gold2)">Qual câmara espiar?</b><div class="pick">${[...Array(N).keys()].map(o=>`<button data-o="${o}">${o===0?"atual":"+"+o}</button>`).join("")}</div><button class="btn ghost" id="cx">Cancelar</button></div>`;
+      document.getElementById("cx").onclick=()=>document.getElementById("pick").innerHTML="";
+      app.querySelectorAll("[data-o]").forEach(x=>x.onclick=()=>send({t:"peekSec", c:+x.dataset.o})); return; }
+    send(a.startsWith("s")?{t:"spin", n:+a.slice(1)}:{t:a}); });
+}
+
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(()=>{});
+home();
+</script>
+</body>
+</html>
