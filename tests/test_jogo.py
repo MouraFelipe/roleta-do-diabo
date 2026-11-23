@@ -37,7 +37,7 @@ try:
       const H=newGame(L(3)); H.turn=0; H.players.forEach(p=>p.coins=20); H.pub[0]='V'; H.players[0].know[1]='B'; H.players[1].know[2]='V';
       act(H,0,{t:'hide'}); o.hide={pub:Object.keys(H.pub).length, mine:JSON.stringify(H.players[0].know), other:Object.keys(H.players[1].know).length, coins:H.players[0].coins};
       // giro cego: todos perdem o que sabiam
-      const B=newGame(L(4)); B.players.forEach(p=>p.coins=20); B.pub[0]='V'; B.players[B.turn].know[1]='B'; act(B,B.turn,{t:'blind'});
+      const B=newGame(L(4),{devil:false}); B.players.forEach(p=>p.coins=20); B.pub[0]='V'; B.players[B.turn].know[1]='B'; act(B,B.turn,{t:'blind'});
       o.blind={pub:Object.keys(B.pub).length, know:B.players.every(p=>!Object.keys(p.know).length), bullets:bulletsLeft(B)};
       // volta completa: o final passa por cada um até a última bala
       const V2=newGame(L(5),{mode:'volta',heatSec:1}); V2.start-=5e3; act(V2,V2.turn,{t:'peekPub',s:0}); o.vPhase=V2.phase;
@@ -56,9 +56,12 @@ try:
       const D=newGame(L(3)); D.pub[0]='V'; D.players[0].know[1]='B'; const ids=D.cyl.map(c=>c.id).join();
       for(let k=0;k<3;k++) act(D,D.turn,{t:'pass'});
       o.devil={pub:Object.keys(D.pub).length, know:D.players.every(p=>!Object.keys(p.know).length), newIds:D.cyl.map(c=>c.id).join()!==ids, bullets:bulletsLeft(D)};
-      const E=newGame(L(3),{devil:false}); E.pub[0]='V'; for(let k=0;k<3;k++) act(E,E.turn,{t:'pass'}); o.devilOff=E.pub[0]==='V';
+      const E=newGame(L(3),{devil:false}); E.pub[0]='V'; for(let k=0;k<3;k++) act(E,E.turn,{t:'pass'}); o.devilOff=E.pub[0]==='V'; o.b8=bulletsLeft(newGame(L(8))); o.b10=bulletsLeft(newGame(L(10)));
+      const T2=newGame(L(3),{mode:'traidor'}); T2.pub[0]='V'; for(let k=0;k<3;k++) act(T2,T2.turn,{t:'pass'});
+      const other=(T2.traitor+1)%3; o.tDv={phase:T2.phase, wrong:!!devilChoice(T2,other,true).err, mine:viewFor(T2,T2.traitor).dv.mine, notMine:viewFor(T2,other).dv.mine};
+      act(T2,T2.traitor,{t:'devil',spin:false}); o.tDv.kept=T2.pub[0]==='V' && T2.phase==='play';
       return o; }""")
-    print("regras:", r); assert r["devilOff"] and r["devil"]=={"pub":0,"know":True,"newIds":True,"bullets":1}; assert r["blind"]=={"pub":0,"know":True,"bullets":1} and r["vPhase"]=="finale" and r["volta"]["over"] and r["volta"]["left"]==0 and r["volta"]["dead"]==2 and r["tSees"] and r["tRev"] and r["aPhase"]=="auction" and r["auc"]=={"phase":"play","win":True,"paid":True}; assert r["hide"] == {"pub": 0, "mine": '{"0":"V","1":"B"}', "other": 0, "coins": 14}
+    print("regras:", r); assert r["b8"]==3 and r["b10"]==3 and r["tDv"]=={"phase":"devil","wrong":True,"mine":True,"notMine":False,"kept":True} and r["devilOff"] and r["devil"]=={"pub":0,"know":True,"newIds":True,"bullets":1}; assert r["blind"]=={"pub":0,"know":True,"bullets":1} and r["vPhase"]=="finale" and r["volta"]["over"] and r["volta"]["left"]==0 and r["volta"]["dead"]==2 and r["tSees"] and r["tRev"] and r["aPhase"]=="auction" and r["auc"]=={"phase":"play","win":True,"paid":True}; assert r["hide"] == {"pub": 0, "mine": '{"0":"V","1":"B"}', "other": 0, "coins": 14}
     assert (r["b3"], r["b4"], r["b5"], r["b6"]) == (1, 1, 2, 2) and r["notTurn"] and r["pub"] == "B" and r["c0"] == 19
     assert "vazia" in r["priv"] and r["secret"] and r["hidden"] and r["afterSpin"] == "2,0,1" and r["cold"] == {"turn": 1, "alive": 3, "c1": 21}
     assert r["heated"] and r["dead"] and r["seats"] == "0,2" and r["over"] and r["winners"] == "0,2"   # acabou a bala, acabou a partida
