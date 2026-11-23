@@ -131,7 +131,7 @@ const SIGIL = `<svg class="sigil" viewBox="0 0 100 100"><defs><linearGradient id
   <circle cx="50" cy="56" r="3.5" fill="url(#sg)"/></svg>`;
 const coin = n => `<span class="coin">${n}</span>`;
 /* ================== regras ================== */
-const COST = {peekPub:1, peekSec:3, "s1":2, "s2":3, "s-1":4, "s-2":5};
+const COST = {peekPub:1, peekSec:3, hide:6, "s1":2, "s2":3, "s-1":4, "s-2":5};
 const DEF = {coins:5, income:1, heatMin:5};     // moedas iniciais · moedas no começo de cada vez · minutos até a arma esquentar
 const BOTNAMES = ["Belzebu","Lilith","Mefisto","Azazel","Baal","Astaroth"];
 const DEVIL = ["O tambor gira... quem tem coragem?","Hehehe. A sorte é minha convidada.","Cada moeda compra um segredo.","Confie no seu instinto... ou não.","Alianças são lindas. Até a bala chegar.","O metal está esquentando."];
@@ -185,6 +185,10 @@ function act(G, i, a){
     log(G, `${p.name} espiou uma câmara em segredo.`); G.fx={k:"peek"};
     return {ok:1, priv:`Câmara de ${who}: ${ch.b?"TEM BALA":"vazia"}`};
   }
+  if (a.t === "hide"){                                   // apaga o que os outros sabem; quem escondeu continua sabendo
+    p.know = Object.assign({}, G.pub, p.know); G.pub = {}; G.players.forEach(x=>{ if(x!==p) x.know={}; });
+    log(G, `🫥 ${p.name} escondeu as balas: ninguém mais sabe o que viu.`); G.fx={k:"hide"}; return {ok:1};
+  }
   if (a.t === "spin"){
     G.cyl = G.cyl.map((_,s)=>G.cyl[mod(s-a.n,K)]);       // cada câmara anda n lugares
     log(G, `${p.name} girou o tambor ${Math.abs(a.n)} casa${Math.abs(a.n)>1?"s":""} para ${a.n>0?"frente":"trás"}.`);
@@ -220,6 +224,8 @@ function botAction(G, i){
   if (st(mine)==="B"){                                     // bala apontada para mim: gira para longe
     for (const n of [1,2,-1,-2]) if (p.coins>=COST["s"+n] && st(G.cyl[mod(s-n,K)].id)!=="B") return {t:"spin", n};
   }
+  const rivalB = G.cyl.some((c,x)=>x!==s && p.know[c.id]==="B" && G.pub[c.id]!=="B");
+  if (!G.acted && rivalB && p.coins>=COST.hide+2 && Math.random()<.5) return {t:"hide"};
   if (G.acted) return {t:"pass"};
   if (soon && st(mine)===undefined){ if (p.coins>=COST.peekSec) return {t:"peekSec", s}; return {t:"peekPub", s}; }
   const others=G.seats.map((_,x)=>x).filter(x=>x!==s && st(G.cyl[x].id)===undefined);
@@ -256,6 +262,7 @@ function home(){
       <li><i>${IC.coin}</i><span>Todos começam com ${DEF.coins} moedas e ganham +${DEF.income} no começo de cada vez.</span></li>
       <li><i>${IC.eye}</i><span><b>Espiar público</b> · ${COST.peekPub} — escolha a câmara de alguém; todos veem se tem bala.</span></li>
       <li><i>${IC.secret}</i><span><b>Espiar secreto</b> · ${COST.peekSec} — só você vê. Conte para um aliado... ou minta.</span></li>
+      <li><i>${IC.skull}</i><span><b>Esconder as balas</b> · ${COST.hide} — apaga o que os outros sabem; você continua sabendo. Combine com outra ação.</span></li>
       <li><i>${IC.f1}</i><span><b>Girar</b> 1 casa · ${COST.s1} &nbsp;|&nbsp; 2 casas · ${COST.s2} &nbsp;—&nbsp; <b>Voltar</b> 1 · ${COST["s-1"]} &nbsp;|&nbsp; 2 · ${COST["s-2"]}</span></li>
       <li><i>${IC.skull}</i><span>A arma <b>esquenta em ${DEF.heatMin} minutos</b>. Depois disso, ao passar a vez, ela dispara na sua câmara. Com bala, você sai.</span></li>
       <li><i>${IC.crown}</i><span>O último vivo vence.</span></li></ul></div>
@@ -439,13 +446,14 @@ function draw(){
       ${A("s2", IC.f2, "Girar 2", "Avança 2 casas")}
       ${A("s-1", IC.b1, "Voltar 1", "Manipulação")}
       ${A("s-2", IC.b2, "Voltar 2", "Manipulação")}
+      <div style="grid-column:1/-1">${A("hide", IC.secret, "Esconder as balas", "Apaga o que os outros sabem · você continua sabendo")}</div>
     </div>
     <button class="shoot" id="pass" ${mine&&v.acted?"":"disabled"}>${v.heated?"Passar e encarar o disparo":"Passar a vez"}</button>`}
     <div class="card"><div class="quote">“${esc(DEVIL[v.log.length%DEVIL.length])}”</div><div class="log">${v.log.map(t=>`<div>${esc(t)}</div>`).join("")}</div></div>
     ${v.over?"":`<button class="btn ghost" id="exit">Sair da partida</button>`}`;
   if (rotFrom){ requestAnimationFrame(()=>requestAnimationFrame(()=>{ const r=document.getElementById("rot"); if(r) r.style.transform="rotate(0deg)"; })); }
   if (fx){ if(fx.k==="bang"){ sfx.bang(); const f=document.createElement("div"); f.className="redflash"; document.body.appendChild(f); setTimeout(()=>f.remove(),800); document.getElementById("stage").classList.add("shake"); }
-    else if(fx.k==="click") sfx.click(); else if(fx.k==="spin") sfx.spin(); else if(fx.k==="peek") sfx.peek(); else if(fx.k==="heat") sfx.heat(); }
+    else if(fx.k==="click") sfx.click(); else if(fx.k==="spin") sfx.spin(); else if(fx.k==="peek") sfx.peek(); else if(fx.k==="heat") sfx.heat(); else if(fx.k==="hide") sfx.spin(); }
   const ex=document.getElementById("exit"); if(ex) ex.onclick=()=>{ clean(); home(); };
   const ag=document.getElementById("again"); if(ag) ag.onclick=()=>{ if(MODE==="guest"){ clean(); home(); return; }
     G=newGame(G.players.map(p=>({id:p.id, name:p.name, bot:p.bot})), G.cfg); lastSeq=-1; MODE==="host"?broadcast():refresh(); };
